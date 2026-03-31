@@ -5,6 +5,11 @@ This is a project built with [Chef](https://chef.convex.dev) using [Convex](http
   
 This project is connected to the Convex deployment named [`hidden-mallard-4`](https://dashboard.convex.dev/d/hidden-mallard-4).
   
+## Current Deployment
+* Site domain on [Squarespace](https://account.squarespace.com/domains/managed/sitejot.app)
+* Site Deployment on [Vercel](https://vercel.com/clayton-cooks-projects-32a4053a/sitejotapp) from main branch
+* Site Backend on [Convex](https://dashboard.convex.dev/t/claytoncook12/sitejotapp/cheery-tapir-278/settings).
+
 ## Project structure
   
 The frontend code is in the `app` directory and is built with [Vite](https://vitejs.dev/).

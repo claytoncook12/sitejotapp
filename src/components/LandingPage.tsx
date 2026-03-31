@@ -237,7 +237,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
       <footer className="border-t border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <span className="text-xs text-slate-400">© 2026 SiteJot. All rights reserved.</span>
-          <div className="flex gap-6">
+          <div className="flex gap-6 hidden">
             <a href="#" className="text-xs text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">Privacy</a>
             <a href="#" className="text-xs text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">Terms</a>
             <a href="#" className="text-xs text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">Contact</a>

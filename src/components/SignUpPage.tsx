@@ -30,7 +30,7 @@ export function SignUpPage({ onNavigate }: { onNavigate: (path: string) => void 
           <span className="text-sm text-slate-500 dark:text-slate-400">Already have an account? </span>
           <button
             onClick={() => onNavigate("/signin")}
-            className="text-sm text-amber-500 hover:text-amber-600 font-medium hover:underline"
+            className="text-sm text-blue-500 hover:text-blue-600 font-medium hover:underline"
           >
             Sign in
           </button>

@@ -3,9 +3,9 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-export function SignInForm() {
+export function SignInForm({ initialFlow = "signIn" }: { initialFlow?: "signIn" | "signUp" } = {}) {
   const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+  const [flow, setFlow] = useState<"signIn" | "signUp">(initialFlow);
   const [submitting, setSubmitting] = useState(false);
 
   return (

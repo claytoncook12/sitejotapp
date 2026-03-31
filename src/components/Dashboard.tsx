@@ -116,8 +116,9 @@ function InvalidateSize({ trigger }: { trigger: boolean }) {
 type Screen = 
   | { type: "dashboard" }
   | { type: "site-detail"; siteId: Id<"sites"> }
-  | { type: "add-observation"; siteId: Id<"sites"> }
-  | { type: "report"; siteId: Id<"sites"> };
+  | { type: "add-observation"; siteId: Id<"sites">; visitId: Id<"visits"> }
+  | { type: "report"; siteId: Id<"sites"> }
+  | { type: "plan-viewer"; siteId: Id<"sites">; planId: Id<"sitePlans"> };
 
 interface DashboardProps {
   onNavigate: (screen: Screen) => void;

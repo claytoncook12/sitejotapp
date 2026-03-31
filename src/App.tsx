@@ -1,108 +1,190 @@
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { SignInForm } from "./SignInForm";
 import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
 import { Dashboard } from "./components/Dashboard";
 import { SiteDetail } from "./components/SiteDetail";
 import { AddObservation } from "./components/AddObservation";
 import { SitePlanViewer } from "./components/SitePlanViewer";
+import { LandingPage } from "./components/LandingPage";
+import { SignInPage } from "./components/SignInPage";
+import { SignUpPage } from "./components/SignUpPage";
 import { useState, useEffect, useCallback } from "react";
 import { Id } from "../convex/_generated/dataModel";
 
-type Screen = 
+type Route =
+  | { type: "landing" }
+  | { type: "signin" }
+  | { type: "signup" }
   | { type: "dashboard" }
   | { type: "site-detail"; siteId: Id<"sites"> }
   | { type: "add-observation"; siteId: Id<"sites">; visitId: Id<"visits"> }
   | { type: "report"; siteId: Id<"sites"> }
   | { type: "plan-viewer"; siteId: Id<"sites">; planId: Id<"sitePlans"> };
 
-// Parse hash to Screen
-function parseHash(): Screen {
-  const hash = window.location.hash.slice(1); // Remove #
-  if (!hash || hash === "/") {
+// Screen type used by child components (dashboard-level navigation)
+export type Screen =
+  | { type: "dashboard" }
+  | { type: "site-detail"; siteId: Id<"sites"> }
+  | { type: "add-observation"; siteId: Id<"sites">; visitId: Id<"visits"> }
+  | { type: "report"; siteId: Id<"sites"> }
+  | { type: "plan-viewer"; siteId: Id<"sites">; planId: Id<"sitePlans"> };
+
+function parsePath(): Route {
+  const path = window.location.pathname;
+
+  if (path === "/signin") return { type: "signin" };
+  if (path === "/signup") return { type: "signup" };
+
+  if (path.startsWith("/dashboard")) {
+    const rest = path.slice("/dashboard".length);
+    const parts = rest.split("/").filter(Boolean);
+
+    if (parts[0] === "site" && parts[1]) {
+      const siteId = parts[1] as Id<"sites">;
+      if (parts[2] === "visit" && parts[3] && parts[4] === "add-observation") {
+        const visitId = parts[3] as Id<"visits">;
+        return { type: "add-observation", siteId, visitId };
+      }
+      if (parts[2] === "plan" && parts[3]) {
+        const planId = parts[3] as Id<"sitePlans">;
+        return { type: "plan-viewer", siteId, planId };
+      }
+      return { type: "site-detail", siteId };
+    }
+
     return { type: "dashboard" };
   }
-  
-  const parts = hash.split("/").filter(Boolean);
-  
-  if (parts[0] === "site" && parts[1]) {
-    const siteId = parts[1] as Id<"sites">;
-    if (parts[2] === "visit" && parts[3] && parts[4] === "add-observation") {
-      const visitId = parts[3] as Id<"visits">;
-      return { type: "add-observation", siteId, visitId };
-    }
-    if (parts[2] === "plan" && parts[3]) {
-      const planId = parts[3] as Id<"sitePlans">;
-      return { type: "plan-viewer", siteId, planId };
-    }
-    return { type: "site-detail", siteId };
-  }
-  
-  return { type: "dashboard" };
+
+  return { type: "landing" };
 }
 
-// Convert Screen to hash
-function screenToHash(screen: Screen): string {
-  switch (screen.type) {
+function routeToPath(route: Route): string {
+  switch (route.type) {
+    case "landing":
+      return "/";
+    case "signin":
+      return "/signin";
+    case "signup":
+      return "/signup";
     case "dashboard":
-      return "#/";
+      return "/dashboard";
     case "site-detail":
-      return `#/site/${screen.siteId}`;
+      return `/dashboard/site/${route.siteId}`;
     case "add-observation":
-      return `#/site/${screen.siteId}/visit/${screen.visitId}/add-observation`;
+      return `/dashboard/site/${route.siteId}/visit/${route.visitId}/add-observation`;
     case "report":
-      return `#/site/${screen.siteId}`;
+      return `/dashboard/site/${route.siteId}`;
     case "plan-viewer":
-      return `#/site/${screen.siteId}/plan/${screen.planId}`;
+      return `/dashboard/site/${route.siteId}/plan/${route.planId}`;
     default:
-      return "#/";
+      return "/";
   }
+}
+
+function navigate(path: string) {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 export default function App() {
-  const [currentScreen, setCurrentScreenState] = useState<Screen>(parseHash);
+  const [route, setRoute] = useState<Route>(parsePath);
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved ? saved === 'dark' : true; // Default to dark mode
+    const saved = localStorage.getItem("theme");
+    return saved ? saved === "dark" : true;
   });
 
-  // Navigate and update hash
-  const setCurrentScreen = useCallback((screen: Screen) => {
-    setCurrentScreenState(screen);
-    window.location.hash = screenToHash(screen);
+  const handleNavigate = useCallback((pathOrScreen: string | Screen) => {
+    if (typeof pathOrScreen === "string") {
+      navigate(pathOrScreen);
+    } else {
+      const r: Route = pathOrScreen;
+      navigate(routeToPath(r));
+    }
   }, []);
 
-  // Handle browser back/forward
+  // Screen-level navigation (used by Dashboard, SiteDetail, etc.)
+  const setCurrentScreen = useCallback((screen: Screen) => {
+    handleNavigate(screen);
+  }, [handleNavigate]);
+
   useEffect(() => {
-    const handleHashChange = () => {
-      setCurrentScreenState(parseHash());
-    };
-    
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    const onPopState = () => setRoute(parsePath());
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
+  // Redirect authenticated users away from signin/signup to dashboard
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && (route.type === "signin" || route.type === "signup")) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, isLoading, route.type]);
+
+  // Redirect unauthenticated users away from dashboard routes
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !isAuthenticated &&
+      route.type !== "landing" &&
+      route.type !== "signin" &&
+      route.type !== "signup"
+    ) {
+      navigate("/signin");
+    }
+  }, [isAuthenticated, isLoading, route.type]);
 
   useEffect(() => {
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
-  const goToDashboard = () => setCurrentScreen({ type: "dashboard" });
+  // Landing page — standalone layout
+  if (route.type === "landing") {
+    return (
+      <>
+        <LandingPage onNavigate={(p) => handleNavigate(p)} />
+        <Toaster />
+      </>
+    );
+  }
+
+  // Sign in / Sign up — standalone layout
+  if (route.type === "signin") {
+    return (
+      <>
+        <SignInPage onNavigate={(p) => handleNavigate(p)} />
+        <Toaster />
+      </>
+    );
+  }
+  if (route.type === "signup") {
+    return (
+      <>
+        <SignUpPage onNavigate={(p) => handleNavigate(p)} />
+        <Toaster />
+      </>
+    );
+  }
+
+  // Dashboard shell (authenticated routes)
+  const currentScreen: Screen = route as Screen;
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
       <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 sm:py-4 print:hidden">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <button
-            onClick={goToDashboard}
+            onClick={() => handleNavigate("/dashboard")}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             title="Go to Dashboard"
           >
@@ -147,27 +229,54 @@ export default function App() {
       </Authenticated>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <Content currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
+        <Authenticated>
+          {currentScreen.type === "dashboard" && (
+            <Dashboard onNavigate={setCurrentScreen} />
+          )}
+          {currentScreen.type === "site-detail" && (
+            <SiteDetail
+              siteId={currentScreen.siteId}
+              onNavigate={setCurrentScreen}
+            />
+          )}
+          {currentScreen.type === "add-observation" && (
+            <AddObservation
+              siteId={currentScreen.siteId}
+              visitId={currentScreen.visitId}
+              onNavigate={setCurrentScreen}
+            />
+          )}
+          {currentScreen.type === "plan-viewer" && (
+            <SitePlanViewer
+              siteId={currentScreen.siteId}
+              planId={currentScreen.planId}
+              onNavigate={setCurrentScreen}
+            />
+          )}
+        </Authenticated>
       </main>
-      
+
       <Toaster />
     </div>
   );
 }
 
-function Breadcrumbs({ 
-  currentScreen, 
-  onNavigate 
-}: { 
+function Breadcrumbs({
+  currentScreen,
+  onNavigate,
+}: {
   currentScreen: Screen;
   onNavigate: (screen: Screen) => void;
 }) {
-  const siteId = currentScreen.type === "site-detail" || currentScreen.type === "add-observation" || currentScreen.type === "plan-viewer"
-    ? currentScreen.siteId 
-    : null;
-  
+  const siteId =
+    currentScreen.type === "site-detail" ||
+    currentScreen.type === "add-observation" ||
+    currentScreen.type === "plan-viewer"
+      ? currentScreen.siteId
+      : null;
+
   const site = useQuery(api.sites.get, siteId ? { siteId } : "skip");
-  
+
   const planId = currentScreen.type === "plan-viewer" ? currentScreen.planId : null;
   const plan = useQuery(api.sitePlans.get, planId ? { planId } : "skip");
 
@@ -215,64 +324,6 @@ function Breadcrumbs({
           </>
         )}
       </nav>
-    </div>
-  );
-}
-
-function Content({ 
-  currentScreen, 
-  setCurrentScreen 
-}: { 
-  currentScreen: Screen;
-  setCurrentScreen: (screen: Screen) => void;
-}) {
-  const loggedInUser = useQuery(api.auth.loggedInUser);
-
-  if (loggedInUser === undefined) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400"></div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <Authenticated>
-        {currentScreen.type === "dashboard" && (
-          <Dashboard onNavigate={setCurrentScreen} />
-        )}
-        {currentScreen.type === "site-detail" && (
-          <SiteDetail 
-            siteId={currentScreen.siteId} 
-            onNavigate={setCurrentScreen}
-          />
-        )}
-        {currentScreen.type === "add-observation" && (
-          <AddObservation 
-            siteId={currentScreen.siteId}
-            visitId={currentScreen.visitId}
-            onNavigate={setCurrentScreen}
-          />
-        )}
-        {currentScreen.type === "plan-viewer" && (
-          <SitePlanViewer
-            siteId={currentScreen.siteId}
-            planId={currentScreen.planId}
-            onNavigate={setCurrentScreen}
-          />
-        )}
-      </Authenticated>
-
-      <Unauthenticated>
-        <div className="max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-4">Welcome to SiteJot</h2>
-            <p className="text-slate-500 dark:text-slate-300">Professional field documentation for all</p>
-          </div>
-          <SignInForm />
-        </div>
-      </Unauthenticated>
     </div>
   );
 }

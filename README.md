@@ -8,6 +8,7 @@ This project is connected to the Convex deployment named [`hidden-mallard-4`](ht
 ## Current Deployment
 * Site domain on [Squarespace](https://account.squarespace.com/domains/managed/sitejot.app)
 * Site Deployment on [Vercel](https://vercel.com/clayton-cooks-projects-32a4053a/sitejotapp) from main branch
+* Site Deployment on [Vercel](https://sitejotappdev.vercel.app/) from dev branch
 * Site Backend on [Convex](https://dashboard.convex.dev/t/claytoncook12/sitejotapp/cheery-tapir-278/settings).
 
 ## Project structure

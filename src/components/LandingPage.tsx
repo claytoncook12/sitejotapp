@@ -73,7 +73,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
             { num: "10×", label: "Faster documentation" },
             { num: "100%", label: "Field-ready on any device" },
             { num: "0", label: "Lost observations" },
-            { num: "1-click", label: "Report sharing" },
+            { num: "1-click", label: "Observation sharing" },
           ].map((s) => (
             <div key={s.label} className="text-center">
               <span className="block text-2xl sm:text-3xl font-bold text-amber-400">{s.num}</span>

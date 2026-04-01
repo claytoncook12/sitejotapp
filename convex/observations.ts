@@ -154,3 +154,37 @@ export const generateUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 });
+
+export const listByVisitPublic = query({
+  args: { visitId: v.id("visits"), slug: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", args.slug))
+      .first();
+
+    if (!site || site.isShared !== true) {
+      return [];
+    }
+
+    // Verify visit belongs to this site
+    const visit = await ctx.db.get(args.visitId);
+    if (!visit || visit.siteId !== site._id) {
+      return [];
+    }
+
+    const observations = await ctx.db
+      .query("observations")
+      .withIndex("by_visit", (q) => q.eq("visitId", args.visitId))
+      .collect();
+
+    observations.sort((a, b) => a.order - b.order);
+
+    return Promise.all(
+      observations.map(async (observation) => ({
+        ...observation,
+        fileUrl: observation.fileId ? await ctx.storage.getUrl(observation.fileId) : null,
+      }))
+    );
+  },
+});

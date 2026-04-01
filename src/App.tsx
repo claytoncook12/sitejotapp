@@ -7,6 +7,7 @@ import { Dashboard } from "./components/Dashboard";
 import { SiteDetail } from "./components/SiteDetail";
 import { AddObservation } from "./components/AddObservation";
 import { SitePlanViewer } from "./components/SitePlanViewer";
+import { SharedSiteView } from "./components/SharedSiteView";
 import { LandingPage } from "./components/LandingPage";
 import { SignInPage } from "./components/SignInPage";
 import { SignUpPage } from "./components/SignUpPage";
@@ -21,7 +22,8 @@ type Route =
   | { type: "site-detail"; siteId: Id<"sites"> }
   | { type: "add-observation"; siteId: Id<"sites">; visitId: Id<"visits"> }
   | { type: "report"; siteId: Id<"sites"> }
-  | { type: "plan-viewer"; siteId: Id<"sites">; planId: Id<"sitePlans"> };
+  | { type: "plan-viewer"; siteId: Id<"sites">; planId: Id<"sitePlans"> }
+  | { type: "shared"; slug: string };
 
 // Screen type used by child components (dashboard-level navigation)
 export type Screen =
@@ -36,6 +38,11 @@ function parsePath(): Route {
 
   if (path === "/signin") return { type: "signin" };
   if (path === "/signup") return { type: "signup" };
+
+  if (path.startsWith("/s/")) {
+    const slug = path.slice("/s/".length);
+    if (slug) return { type: "shared", slug };
+  }
 
   if (path.startsWith("/dashboard")) {
     const rest = path.slice("/dashboard".length);
@@ -130,7 +137,8 @@ export default function App() {
       !isAuthenticated &&
       route.type !== "landing" &&
       route.type !== "signin" &&
-      route.type !== "signup"
+      route.type !== "signup" &&
+      route.type !== "shared"
     ) {
       navigate("/signin");
     }
@@ -171,6 +179,16 @@ export default function App() {
     return (
       <>
         <SignUpPage onNavigate={(p) => handleNavigate(p)} />
+        <Toaster />
+      </>
+    );
+  }
+
+  // Shared site view — no auth required
+  if (route.type === "shared") {
+    return (
+      <>
+        <SharedSiteView slug={route.slug} />
         <Toaster />
       </>
     );

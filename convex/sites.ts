@@ -2,6 +2,15 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+function generateSlug(length: number): string {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -171,5 +180,69 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.siteId);
+  },
+});
+
+export const toggleShare = mutation({
+  args: { siteId: v.id("sites") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const site = await ctx.db.get(args.siteId);
+    if (!site || site.userId !== userId) {
+      throw new Error("Site not found or access denied");
+    }
+
+    const isCurrentlyShared = site.isShared === true;
+
+    if (isCurrentlyShared) {
+      // Toggle OFF
+      await ctx.db.patch(args.siteId, { isShared: false });
+      return { isShared: false, shareSlug: site.shareSlug };
+    } else {
+      // Toggle ON - reuse existing slug or generate new one
+      let slug = site.shareSlug;
+      if (!slug) {
+        slug = generateSlug(6);
+        // Check uniqueness
+        while (
+          await ctx.db
+            .query("sites")
+            .withIndex("by_shareSlug", (q) => q.eq("shareSlug", slug))
+            .first()
+        ) {
+          slug = generateSlug(6);
+        }
+      }
+      await ctx.db.patch(args.siteId, { isShared: true, shareSlug: slug });
+      return { isShared: true, shareSlug: slug };
+    }
+  },
+});
+
+export const getByShareSlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", args.slug))
+      .first();
+
+    if (!site || site.isShared !== true) {
+      return null;
+    }
+
+    const user = await ctx.db.get(site.userId);
+
+    return {
+      _id: site._id,
+      name: site.name,
+      location: site.location,
+      status: site.status,
+      createdBy: user?.name || user?.email || "Unknown",
+    };
   },
 });

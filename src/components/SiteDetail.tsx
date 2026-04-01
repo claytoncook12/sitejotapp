@@ -478,6 +478,7 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
   const visits = useQuery(api.visits.list, { siteId }) || [];
   const sitePlans = useQuery(api.sitePlans.list, { siteId }) || [];
   const updateSite = useMutation(api.sites.update);
+  const toggleShare = useMutation(api.sites.toggleShare);
   const createVisit = useMutation(api.visits.create);
   const updateVisit = useMutation(api.visits.update);
   const deleteVisit = useMutation(api.visits.remove);
@@ -779,14 +780,54 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
             </select>
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <button
             onClick={() => setShowReport(true)}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
           >
             📄 Generate Report
           </button>
+          <button
+            onClick={async () => {
+              try {
+                const result = await toggleShare({ siteId });
+                if (result.isShared) {
+                  const shareUrl = `${window.location.origin}/s/${result.shareSlug}`;
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast.success("Sharing enabled! Link copied to clipboard.");
+                } else {
+                  toast.success("Sharing disabled.");
+                }
+              } catch (error) {
+                toast.error("Failed to toggle sharing");
+              }
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              site.isShared
+                ? "bg-green-500 hover:bg-green-600 text-white"
+                : "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white"
+            }`}
+          >
+            {site.isShared ? "🔗 Shared" : "🔗 Share"}
+          </button>
         </div>
+        {site.isShared && site.shareSlug && (
+          <div className="mt-3 rounded-lg border border-green-500/30 bg-green-500/10 p-3 flex items-center gap-3">
+            <span className="text-green-400 text-lg">🔗</span>
+            <code className="flex-1 text-sm text-green-300 bg-slate-800 rounded px-3 py-1.5 truncate">
+              {`${window.location.origin}/s/${site.shareSlug}`}
+            </code>
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(`${window.location.origin}/s/${site.shareSlug}`);
+                toast.success("Link copied!");
+              }}
+              className="shrink-0 rounded-md bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-3 py-1.5 transition-colors"
+            >
+              Copy Link
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Site Boundary */}

@@ -10,7 +10,9 @@ const applicationTables = {
     visitDate: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("complete"), v.literal("in_review")),
     userId: v.id("users"),
-  }).index("by_user", ["userId"]),
+    isShared: v.optional(v.boolean()),
+    shareSlug: v.optional(v.string()),
+  }).index("by_user", ["userId"]).index("by_shareSlug", ["shareSlug"]),
 
   visits: defineTable({
     siteId: v.id("sites"),

@@ -121,3 +121,26 @@ export const remove = mutation({
     await ctx.db.delete(args.visitId);
   },
 });
+
+export const listByShareSlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", args.slug))
+      .first();
+
+    if (!site || site.isShared !== true) {
+      return [];
+    }
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_site", (q) => q.eq("siteId", site._id))
+      .collect();
+
+    visits.sort((a, b) => b.visitDate.localeCompare(a.visitDate));
+
+    return visits;
+  },
+});

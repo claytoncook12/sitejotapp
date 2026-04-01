@@ -154,3 +154,41 @@ export const remove = mutation({
     await ctx.db.delete(args.planId);
   },
 });
+
+export const listByShareSlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", args.slug))
+      .first();
+
+    if (!site || site.isShared !== true) {
+      return [];
+    }
+
+    const plans = await ctx.db
+      .query("sitePlans")
+      .withIndex("by_site", (q) => q.eq("siteId", site._id))
+      .collect();
+
+    const plansWithDetails = await Promise.all(
+      plans.map(async (plan) => {
+        const markers = await ctx.db
+          .query("planMarkers")
+          .withIndex("by_plan", (q) => q.eq("planId", plan._id))
+          .collect();
+
+        const imageUrl = await ctx.storage.getUrl(plan.imageFileId);
+
+        return {
+          ...plan,
+          markerCount: markers.length,
+          imageUrl,
+        };
+      })
+    );
+
+    return plansWithDetails;
+  },
+});

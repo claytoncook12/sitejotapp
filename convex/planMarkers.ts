@@ -193,3 +193,54 @@ export const remove = mutation({
     await ctx.db.delete(args.markerId);
   },
 });
+
+export const listPublic = query({
+  args: { planId: v.id("sitePlans"), slug: v.string() },
+  handler: async (ctx, args) => {
+    const plan = await ctx.db.get(args.planId);
+    if (!plan) {
+      return [];
+    }
+
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", args.slug))
+      .first();
+
+    if (!site || site.isShared !== true || plan.siteId !== site._id) {
+      return [];
+    }
+
+    const markers = await ctx.db
+      .query("planMarkers")
+      .withIndex("by_plan", (q) => q.eq("planId", args.planId))
+      .collect();
+
+    const markersWithDetails = await Promise.all(
+      markers.map(async (marker) => {
+        if (marker.observationId) {
+          const observation = await ctx.db.get(marker.observationId);
+          if (observation) {
+            let imageUrl = null;
+            if (observation.fileId) {
+              imageUrl = await ctx.storage.getUrl(observation.fileId);
+            }
+            return {
+              ...marker,
+              observation: {
+                ...observation,
+                imageUrl,
+              },
+            };
+          }
+        }
+        return {
+          ...marker,
+          observation: null,
+        };
+      })
+    );
+
+    return markersWithDetails;
+  },
+});

@@ -155,3 +155,24 @@ export const exportGeoJSON = query({
     };
   },
 });
+
+export const getBySitePublic = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", args.slug))
+      .first();
+
+    if (!site || site.isShared !== true) {
+      return null;
+    }
+
+    const polylines = await ctx.db
+      .query("sitePolylines")
+      .withIndex("by_site", (q) => q.eq("siteId", site._id))
+      .collect();
+
+    return polylines[0] || null;
+  },
+});

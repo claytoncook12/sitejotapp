@@ -33,7 +33,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
             onClick={() => onNavigate("/signin")}
             className="sm:hidden bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            Get Started
+            Login
           </button>
         </div>
       </nav>

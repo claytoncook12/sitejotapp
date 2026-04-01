@@ -31,7 +31,7 @@ function FitToBounds({ coordinates }: { coordinates: number[][] }) {
           [bounds.minLat, bounds.minLng],
           [bounds.maxLat, bounds.maxLng],
         ],
-        { padding: [20, 20] }
+        { padding: [40, 40], maxZoom: 16 }
       );
     }
   }, [coordinates, map]);
@@ -252,8 +252,10 @@ export function SiteReport({ siteId, onBack }: SiteReportProps) {
     <div className="print:bg-white print:text-black">
       {/* Print styles */}
       <style>{`
+        @page { margin: 0.5in; }
         @media print {
-          body { background: white !important; color: black !important; }
+          html, body { height: auto !important; overflow: visible !important; }
+          body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
           .bg-slate-800 { background: white !important; border: 1px solid #ccc !important; }
@@ -337,7 +339,7 @@ export function SiteReport({ siteId, onBack }: SiteReportProps) {
                 preferCanvas={true}
                 style={{ height: "100%", width: "100%" }}
               >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer url="https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}" />
                 <Polygon
                   positions={siteBoundary.coordinates.map(([lng, lat]: number[]) => [lat, lng] as [number, number])}
                   pathOptions={{ color: "#f59e0b", weight: 3, fillOpacity: 0.2 }}
@@ -349,7 +351,7 @@ export function SiteReport({ siteId, onBack }: SiteReportProps) {
         )}
 
         {/* Visits with Observations */}
-        <div className="mb-8 print:mb-6">
+        <div className="mb-8 print:mb-0">
           <h2 className="text-xl font-semibold text-black mb-4 print:text-lg">
             Visits & Observations
           </h2>
@@ -370,7 +372,7 @@ export function SiteReport({ siteId, onBack }: SiteReportProps) {
 
         {/* Site Plans Section */}
         {sitePlans.length > 0 && (
-          <div className="mb-8 print:mb-6">
+          <div className="mb-8 print:mb-0">
             <h2 className="text-xl font-semibold text-black mb-4 print:text-lg">
               Site Plans ({sitePlans.length})
             </h2>
@@ -388,10 +390,10 @@ export function SiteReport({ siteId, onBack }: SiteReportProps) {
         )}
 
         {/* Report Footer */}
-        <div className="border-t border-gray-300 pt-4 print:pt-2">
+        <div className="border-t border-gray-300 pt-4 print:pt-2 print:mt-0 print:pb-0">
           <div className="text-center text-gray-500 text-sm">
             <p>Report generated on {new Date().toLocaleString()}</p>
-            <p className="mt-1">SiteJot Documentation System</p>
+            <p className="mt-1 print:mb-0">SiteJot Documentation System</p>
           </div>
         </div>
       </div>

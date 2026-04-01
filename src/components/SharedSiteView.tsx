@@ -32,7 +32,7 @@ function FitBoundsPublic({ coordinates }: { coordinates: number[][] }) {
           [bounds.minLat, bounds.minLng],
           [bounds.maxLat, bounds.maxLng],
         ],
-        { padding: [20, 20] }
+        { padding: [40, 40], maxZoom: 16 }
       );
     }
   }, [coordinates, map]);
@@ -65,17 +65,20 @@ function SharedSiteBoundary({ slug }: { slug: string }) {
     <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
       <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Site Boundary</h4>
       <div className="space-y-3">
-        <div className="h-32 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600 relative z-0">
+        <div className="h-64 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600 relative z-0">
           <MapContainer
             center={defaultCenter}
             zoom={13}
-            scrollWheelZoom={false}
-            dragging={false}
+            scrollWheelZoom={true}
+            dragging={true}
             zoomControl={false}
             attributionControl={false}
             style={{ height: "100%", width: "100%" }}
           >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer
+              url="https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}"
+              attribution="USGS The National Map"
+            />
             <Polygon
               positions={toLeafletCoords(boundary.coordinates)}
               pathOptions={{ color: boundary.color || "#f59e0b", weight: boundary.strokeWidth || 3 }}
@@ -309,8 +312,10 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
   return (
     <div className="print:bg-white print:text-black">
       <style>{`
+        @page { margin: 0.5in; }
         @media print {
-          body { background: white !important; color: black !important; }
+          html, body { height: auto !important; overflow: visible !important; }
+          body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
           .bg-slate-800 { background: white !important; border: 1px solid #ccc !important; }
@@ -386,7 +391,10 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
                 preferCanvas={true}
                 style={{ height: "100%", width: "100%" }}
               >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer
+                  url="https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}"
+                  attribution="USGS The National Map"
+                />
                 <Polygon
                   positions={siteBoundary.coordinates.map(([lng, lat]: number[]) => [lat, lng] as [number, number])}
                   pathOptions={{ color: "#f59e0b", weight: 3, fillOpacity: 0.2 }}
@@ -397,7 +405,7 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
           </div>
         )}
 
-        <div className="mb-8 print:mb-6">
+        <div className="mb-8 print:mb-0">
           <h2 className="text-xl font-semibold text-black mb-4 print:text-lg">
             Visits & Observations
           </h2>
@@ -418,7 +426,7 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
         </div>
 
         {sitePlans.length > 0 && (
-          <div className="mb-8 print:mb-6">
+          <div className="mb-8 print:mb-0">
             <h2 className="text-xl font-semibold text-black mb-4 print:text-lg">
               Site Plans ({sitePlans.length})
             </h2>
@@ -436,10 +444,10 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
           </div>
         )}
 
-        <div className="border-t border-gray-300 pt-4 print:pt-2">
+        <div className="border-t border-gray-300 pt-4 print:pt-2 print:mt-0 print:pb-0">
           <div className="text-center text-gray-500 text-sm">
             <p>Report generated on {new Date().toLocaleString()}</p>
-            <p className="mt-1">SiteJot Documentation System</p>
+            <p className="mt-1 print:mb-0">SiteJot Documentation System</p>
           </div>
         </div>
       </div>
@@ -949,7 +957,7 @@ export function SharedSiteView({ slug }: SharedSiteViewProps) {
       )}
 
       {/* Header */}
-      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 sm:py-4">
+      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 sm:py-4 print:hidden">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 flex items-center justify-center">
@@ -970,7 +978,7 @@ export function SharedSiteView({ slug }: SharedSiteViewProps) {
       </header>
 
       {showReport ? (
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 print:px-0 print:py-0 print:max-w-none">
           <SharedSiteReport slug={slug} onBack={() => setShowReport(false)} />
         </main>
       ) : (

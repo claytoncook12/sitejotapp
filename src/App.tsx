@@ -243,10 +243,12 @@ export default function App() {
       </header>
 
       <Authenticated>
-        <Breadcrumbs currentScreen={currentScreen} onNavigate={setCurrentScreen} />
+        <div className="print:hidden">
+          <Breadcrumbs currentScreen={currentScreen} onNavigate={setCurrentScreen} />
+        </div>
       </Authenticated>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 print:px-0 print:py-0 print:max-w-none">
         <Authenticated>
           {currentScreen.type === "dashboard" && (
             <Dashboard onNavigate={setCurrentScreen} />

@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Polygon, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet";
@@ -139,6 +139,39 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [flyTrigger, setFlyTrigger] = useState(0);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
+  // Search, filter & pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "complete" | "in_review">("all");
+  const ITEMS_PER_PAGE = 9;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredSites = useMemo(() => {
+    let result = sites;
+    if (statusFilter !== "all") {
+      result = result.filter((s) => s.status === statusFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.location.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [sites, searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSites.length / ITEMS_PER_PAGE));
+  const paginatedSites = useMemo(
+    () => filteredSites.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [filteredSites, currentPage]
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
   const handleZoomToLocation = () => {
     const lat = parseFloat(zoomLat);
     const lng = parseFloat(zoomLng);
@@ -208,13 +241,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Site Visits</h2>
-          <div className="flex rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600 self-start">
+          <div className="flex rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600">
             <button
               onClick={() => setViewMode("list")}
-              className={`px-3 py-1.5 text-sm font-medium flex items-center gap-1.5 transition-colors ${
+              className={`px-2 sm:px-3 py-1.5 text-sm font-medium flex items-center gap-1.5 transition-colors ${
                 viewMode === "list"
                   ? "bg-amber-400 text-slate-900"
                   : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
@@ -223,11 +256,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              List
+              <span className="hidden sm:inline">List</span>
             </button>
             <button
               onClick={() => setViewMode("map")}
-              className={`px-3 py-1.5 text-sm font-medium flex items-center gap-1.5 transition-colors ${
+              className={`px-2 sm:px-3 py-1.5 text-sm font-medium flex items-center gap-1.5 transition-colors ${
                 viewMode === "map"
                   ? "bg-amber-400 text-slate-900"
                   : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
@@ -236,16 +269,63 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
-              Map
+              <span className="hidden sm:inline">Map</span>
             </button>
           </div>
         </div>
         <button
           onClick={() => setShowCreateForm(true)}
-          className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg font-medium transition-colors self-start sm:self-auto"
+          className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base whitespace-nowrap"
         >
-          + New Site Visit
+          <span className="sm:hidden">+ New</span>
+          <span className="hidden sm:inline">+ New Site Visit</span>
         </button>
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="flex gap-2 sm:gap-3 mb-6 items-center">
+        <div className="relative flex-1 min-w-0">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name or location..."
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-slate-400"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          className="w-[120px] sm:w-auto flex-shrink-0 px-2 sm:px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="complete">Complete</option>
+          <option value="in_review">In Review</option>
+        </select>
+        {(searchQuery || statusFilter !== "all") && (
+          <span className="hidden sm:block self-center text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+            {filteredSites.length} of {sites.length} sites
+          </span>
+        )}
       </div>
 
       {showCreateForm && (
@@ -494,8 +574,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       )}
 
       {viewMode === "list" && (
+      <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {sites.map((site) => (
+        {paginatedSites.map((site) => (
           <div
             key={site._id}
             className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
@@ -558,6 +639,51 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {filteredSites.length > ITEMS_PER_PAGE && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Previous
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`w-8 h-8 text-sm font-medium rounded-lg transition-colors ${
+                page === currentPage
+                  ? "bg-amber-400 text-slate-900"
+                  : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
+      </>
+      )}
+
+      {/* No results from search/filter */}
+      {filteredSites.length === 0 && sites.length > 0 && !showCreateForm && (
+        <div className="text-center py-12">
+          <svg className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">No matching sites</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Try adjusting your search or filter.</p>
+        </div>
       )}
 
       {sites.length === 0 && !showCreateForm && (

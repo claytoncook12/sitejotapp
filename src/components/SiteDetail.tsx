@@ -48,13 +48,10 @@ function VisitObservations({
   const draggedItemRef = useRef<ObservationType | null>(null);
 
   // Sync local state with server data
+  const observationsKey = JSON.stringify(observations.map((o) => o._id));
   useEffect(() => {
-    if (observations.length > 0) {
-      setLocalObservations(observations);
-    } else {
-      setLocalObservations([]);
-    }
-  }, [observations]);
+    setLocalObservations(observations);
+  }, [observationsKey]);
 
   const startEditing = (observationId: Id<"observations">, currentDescription: string | undefined) => {
     setEditingId(observationId);
@@ -709,112 +706,116 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
     <div>
       {/* Site Header Card */}
       <div className="bg-white dark:bg-slate-800 rounded-lg p-4 sm:p-6 mb-6 border border-slate-200 dark:border-slate-700">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
-          <div className="flex-1">
-            <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">Site ID: <span className="font-medium text-slate-700 dark:text-slate-300">{site._id}</span></p>
-            {isEditingSite ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={editSiteName}
-                    onChange={(e) => setEditSiteName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Location</label>
-                  <input
-                    type="text"
-                    value={editSiteLocation}
-                    onChange={(e) => setEditSiteLocation(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={saveSiteEdit}
-                    className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={cancelEditingSite}
-                    className="px-4 py-2 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{site.name}</h2>
-                  <button
-                    onClick={startEditingSite}
-                    className="p-1 text-slate-400 hover:text-amber-400 transition-colors"
-                    title="Edit site details"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                </div>
-                <p className="text-slate-600 dark:text-slate-300 mb-1">{site.location}</p>
-              </div>
-            )}
+        {isEditingSite ? (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Name</label>
+              <input
+                type="text"
+                value={editSiteName}
+                onChange={(e) => setEditSiteName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Location</label>
+              <input
+                type="text"
+                value={editSiteLocation}
+                onChange={(e) => setEditSiteLocation(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={saveSiteEdit}
+                className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg text-sm font-medium transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={cancelEditingSite}
+                className="px-4 py-2 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-          <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium text-white ${getStatusColor(site.status)}`}>
-              {getStatusText(site.status)}
-            </span>
-            <select
-              value={site.status}
-              onChange={(e) => handleStatusChange(e.target.value as "active" | "in_review" | "complete")}
-              className="px-3 py-1 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              <option value="active">Active</option>
-              <option value="in_review">In Review</option>
-              <option value="complete">Complete</option>
-            </select>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => setShowReport(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            📄 Generate Report
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const result = await toggleShare({ siteId });
-                if (result.isShared) {
-                  const shareUrl = `${window.location.origin}/s/${result.shareSlug}`;
-                  await navigator.clipboard.writeText(shareUrl);
-                  toast.success("Sharing enabled! Link copied to clipboard.");
-                } else {
-                  toast.success("Sharing disabled.");
-                }
-              } catch (error) {
-                toast.error("Failed to toggle sharing");
-              }
-            }}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              site.isShared
-                ? "bg-green-500 hover:bg-green-600 text-white"
-                : "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white"
-            }`}
-          >
-            {site.isShared ? "🔗 Shared" : "🔗 Share"}
-          </button>
-        </div>
+        ) : (
+          <>
+            {/* Row 1: Name + status */}
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">{site.name}</h2>
+                <button
+                  onClick={startEditingSite}
+                  className="shrink-0 p-1 text-slate-400 hover:text-amber-400 transition-colors"
+                  title="Edit site details"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              </div>
+              <select
+                value={site.status}
+                onChange={(e) => handleStatusChange(e.target.value as "active" | "in_review" | "complete")}
+                className={`shrink-0 px-3 py-1 rounded-full text-sm font-medium text-white border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400 appearance-none bg-[length:16px_16px] bg-[position:right_8px_center] bg-no-repeat pr-7 ${getStatusColor(site.status)}`}
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")` }}
+              >
+                <option value="active">Active</option>
+                <option value="in_review">In Review</option>
+                <option value="complete">Complete</option>
+              </select>
+            </div>
+
+            {/* Row 2: Location */}
+            <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base mb-1">{site.location}</p>
+
+            {/* Row 3: Site ID */}
+            <p className="text-slate-400 dark:text-slate-500 text-xs mb-4">
+              site id: {site._id}
+            </p>
+
+            {/* Row 4: Actions */}
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <button
+                onClick={() => setShowReport(true)}
+                className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors text-center"
+              >
+                📄 Generate Report
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const result = await toggleShare({ siteId });
+                    if (result.isShared) {
+                      const shareUrl = `${window.location.origin}/s/${result.shareSlug}`;
+                      await navigator.clipboard.writeText(shareUrl);
+                      toast.success("Sharing enabled! Link copied to clipboard.");
+                    } else {
+                      toast.success("Sharing disabled.");
+                    }
+                  } catch (error) {
+                    toast.error("Failed to toggle sharing");
+                  }
+                }}
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium text-sm transition-colors text-center ${
+                  site.isShared
+                    ? "bg-green-500 hover:bg-green-600 text-white"
+                    : "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white"
+                }`}
+              >
+                {site.isShared ? "🔗 Shared" : "🔗 Share"}
+              </button>
+            </div>
+          </>
+        )}
+
         {site.isShared && site.shareSlug && (
-          <div className="mt-3 rounded-lg border border-green-500/30 bg-green-500/10 p-3 flex items-center gap-3">
-            <span className="text-green-400 text-lg">🔗</span>
-            <code className="flex-1 text-sm text-green-300 bg-slate-800 rounded px-3 py-1.5 truncate">
+          <div className="mt-3 rounded-lg border border-green-500/30 bg-green-500/10 p-3 flex items-center gap-2 sm:gap-3">
+            <span className="text-green-400 text-lg shrink-0">🔗</span>
+            <code className="flex-1 text-xs sm:text-sm text-green-300 bg-slate-800 rounded px-2 sm:px-3 py-1.5 truncate min-w-0">
               {`${window.location.origin}/s/${site.shareSlug}`}
             </code>
             <button
@@ -822,9 +823,9 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
                 await navigator.clipboard.writeText(`${window.location.origin}/s/${site.shareSlug}`);
                 toast.success("Link copied!");
               }}
-              className="shrink-0 rounded-md bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-3 py-1.5 transition-colors"
+              className="shrink-0 rounded-md bg-green-600 hover:bg-green-500 text-white text-xs sm:text-sm font-medium px-2 sm:px-3 py-1.5 transition-colors"
             >
-              Copy Link
+              Copy
             </button>
           </div>
         )}

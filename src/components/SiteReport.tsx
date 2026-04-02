@@ -51,7 +51,7 @@ function VisitObservationsSection({ visitId, visitDate, visitIndex }: { visitId:
   });
 
   return (
-    <div className="mb-8 print:mb-6 print:break-inside-avoid-page">
+    <div className="mb-8 print:mb-6">
       <h3 className="text-lg font-semibold text-black mb-4 print:text-base border-b-2 border-amber-400 pb-2">
         Visit {visitIndex + 1}: {formattedDate}
       </h3>
@@ -87,7 +87,7 @@ function VisitObservationsSection({ visitId, visitDate, visitIndex }: { visitId:
                       <img
                         src={observation.fileUrl}
                         alt={`Observation ${index + 1}`}
-                        className="max-w-full h-auto rounded border border-gray-300 print:max-h-64"
+                        className="max-w-full max-h-[768px] w-auto h-auto rounded border border-gray-300 print:max-h-64"
                       />
                     </div>
                   )}
@@ -258,6 +258,7 @@ export function SiteReport({ siteId, onBack }: SiteReportProps) {
           body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
+          [data-sonner-toaster] { display: none !important; }
           .bg-slate-800 { background: white !important; border: 1px solid #ccc !important; }
           .text-white { color: black !important; }
           .text-slate-300 { color: #333 !important; }
@@ -297,6 +298,10 @@ export function SiteReport({ siteId, onBack }: SiteReportProps) {
         <div className="mb-8 print:mb-6">
           <h2 className="text-xl font-semibold text-black mb-4 print:text-lg">Site Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2 print:gap-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
+              <p className="text-black font-medium">{site.name}</p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Site ID</label>
               <p className="text-black font-medium">{site._id}</p>

@@ -9,6 +9,8 @@ import "leaflet/dist/leaflet.css";
 
 interface SharedSiteViewProps {
   slug: string;
+  isDarkMode: boolean;
+  toggleTheme: () => void;
 }
 
 // Component to fit map to bounds
@@ -122,7 +124,7 @@ function SharedReportVisitObservations({ visitId, visitDate, visitIndex, slug }:
   });
 
   return (
-    <div className="mb-8 print:mb-6 print:break-inside-avoid-page">
+    <div className="mb-8 print:mb-6">
       <h3 className="text-lg font-semibold text-black mb-4 print:text-base border-b-2 border-amber-400 pb-2">
         Visit {visitIndex + 1}: {formattedDate}
       </h3>
@@ -158,7 +160,7 @@ function SharedReportVisitObservations({ visitId, visitDate, visitIndex, slug }:
                       <img
                         src={observation.fileUrl}
                         alt={`Observation ${index + 1}`}
-                        className="max-w-full h-auto rounded border border-gray-300 print:max-h-64"
+                        className="max-w-full max-h-[768px] w-auto h-auto rounded border border-gray-300 print:max-h-64"
                       />
                     </div>
                   )}
@@ -318,6 +320,7 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
           body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
+          [data-sonner-toaster] { display: none !important; }
           .bg-slate-800 { background: white !important; border: 1px solid #ccc !important; }
           .text-white { color: black !important; }
           .text-slate-300 { color: #333 !important; }
@@ -357,6 +360,10 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
               <p className="text-black font-medium">{site.name}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Site ID</label>
+              <p className="text-black font-medium">{site._id}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Status</label>
@@ -877,17 +884,13 @@ function SharedVisitObservations({
   );
 }
 
-export function SharedSiteView({ slug }: SharedSiteViewProps) {
+export function SharedSiteView({ slug, isDarkMode, toggleTheme }: SharedSiteViewProps) {
   const site = useQuery(api.sites.getByShareSlug, { slug });
   const visits = useQuery(api.visits.listByShareSlug, { slug }) || [];
   const sitePlans = useQuery(api.sitePlans.listByShareSlug, { slug }) || [];
   const [expandedVisits, setExpandedVisits] = useState<Set<string>>(new Set());
   const [activePlan, setActivePlan] = useState<{ id: Id<"sitePlans">; name: string; imageUrl: string | null } | null>(null);
   const [showReport, setShowReport] = useState(false);
-  const [isDarkMode] = useState(() => {
-    const saved = localStorage.getItem("theme");
-    return saved ? saved === "dark" : true;
-  });
 
   // Expand most recent visit by default
   if (visits.length > 0 && expandedVisits.size === 0) {
@@ -973,7 +976,24 @@ export function SharedSiteView({ slug }: SharedSiteViewProps) {
             </div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-white">SiteJot</h1>
           </div>
-          <span className="text-sm text-slate-500 dark:text-slate-400">Shared View</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? (
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              )}
+            </button>
+            <span className="text-sm text-slate-500 dark:text-slate-400">Shared View</span>
+          </div>
         </div>
       </header>
 

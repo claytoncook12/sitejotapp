@@ -61,4 +61,21 @@ body {
   display: none !important;
 }
 
+/* Print cleanup — hide non-report UI elements */
+@media print {
+  /* Hide all fixed-positioned overlays (toasts, modals, etc.) */
+  [data-sonner-toaster],
+  section[data-sonner-toaster] {
+    display: none !important;
+  }
+
+  /* Hide Leaflet controls and overlays that shouldn't print */
+  .leaflet-control-container,
+  .leaflet-control,
+  .leaflet-top,
+  .leaflet-bottom {
+    display: none !important;
+  }
+}
+
 /* end of base styles */

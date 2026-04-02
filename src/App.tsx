@@ -194,7 +194,7 @@ export default function App() {
   if (route.type === "shared") {
     return (
       <>
-        <SharedSiteView slug={route.slug} />
+        <SharedSiteView slug={route.slug} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         <Toaster />
       </>
     );

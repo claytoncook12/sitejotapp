@@ -159,7 +159,7 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
           {/* Feature list */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg divide-y divide-slate-200 dark:divide-slate-700 overflow-hidden">
             {[
-              { num: "01", title: "Fast Capture", desc: "Log observations in seconds. Designed to work in the field — even with gloves on, in the sun, or in a rush." },
+              { num: "01", title: "Fast Capture", desc: "Log observations in seconds. Designed to work in the field." },
               { num: "02", title: "Photos & Video", desc: "Attach images and videos directly to any observation. Everything stays organized, tagged, and findable." },
               { num: "03", title: "One-Click Reports", desc: "Generate a clean, professional report with a single tap. Share via link or export to PDF instantly." },
               { num: "04", title: "Easy to Learn", desc: "No training required. If you've used a notes app, you already know how to use SiteJot." },

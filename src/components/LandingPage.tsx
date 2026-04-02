@@ -72,10 +72,6 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
 
       {/* HERO */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-32">
-        <span className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-400/50 px-3 py-1.5 rounded mb-8">
-          <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-          Built for field engineers
-        </span>
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
           Site visits.<br />
           <span className="text-amber-500">Documented.</span>

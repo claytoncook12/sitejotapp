@@ -39,6 +39,9 @@ export const create = mutation({
     description: v.optional(v.string()),
     type: v.union(v.literal("note"), v.literal("photo"), v.literal("video")),
     fileId: v.optional(v.id("_storage")),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    gpsAccuracy: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

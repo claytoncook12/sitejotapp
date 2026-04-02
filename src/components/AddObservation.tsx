@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
+import { CameraCapture, GpsData } from "./CameraCapture";
 
 type Screen = 
   | { type: "dashboard" }
@@ -29,12 +30,19 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
     type: "note",
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [gpsData, setGpsData] = useState<GpsData | null>(null);
+  const [includeGps, setIncludeGps] = useState(true);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(URL.createObjectURL(file));
+      setShowCamera(false);
       
       // Auto-detect type based on file
       if (file.type.startsWith("image/")) {
@@ -43,6 +51,22 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
         setFormData(prev => ({ ...prev, type: "video" }));
       }
     }
+  };
+
+  const handleCameraCapture = (file: File, gps: GpsData | null) => {
+    setSelectedFile(file);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
+    setGpsData(gps);
+    setShowCamera(false);
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setGpsData(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,11 +93,16 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
         fileId = json.storageId;
       }
 
+      const shouldIncludeGps = includeGps && (formData.type === "photo" || formData.type === "video");
+
       await createObservation({
         visitId,
         description: formData.description,
         type: formData.type,
         fileId,
+        latitude: shouldIncludeGps ? gpsData?.latitude : undefined,
+        longitude: shouldIncludeGps ? gpsData?.longitude : undefined,
+        gpsAccuracy: shouldIncludeGps ? gpsData?.accuracy : undefined,
       });
 
       toast.success("Observation added successfully");
@@ -119,6 +148,91 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
             </div>
           </div>
 
+          {(formData.type === "photo" || formData.type === "video") && (
+            <div>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                {formData.type === "photo" ? "Photo" : "Video"}
+              </label>
+
+              {showCamera ? (
+                <CameraCapture
+                  mode={formData.type}
+                  onCapture={handleCameraCapture}
+                  onCancel={() => setShowCamera(false)}
+                />
+              ) : selectedFile && previewUrl ? (
+                <div className="border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
+                  {formData.type === "photo" ? (
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className="w-full max-h-64 object-contain bg-black"
+                    />
+                  ) : (
+                    <video
+                      src={previewUrl}
+                      controls
+                      playsInline
+                      className="w-full max-h-64 bg-black"
+                    />
+                  )}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between">
+                    <div>
+                      <p className="text-slate-900 dark:text-white text-sm font-medium truncate">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="text-red-500 hover:text-red-400 text-sm font-medium transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCamera(true)}
+                    className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg hover:border-amber-400 hover:bg-amber-400/5 transition-colors"
+                  >
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                      {formData.type === "photo" ? "Take Photo" : "Record Video"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg hover:border-amber-400 hover:bg-amber-400/5 transition-colors"
+                  >
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                      Choose File
+                    </span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileChange}
+                    accept={formData.type === "photo" ? "image/*" : "video/*"}
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
               Description
@@ -133,53 +247,20 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
           </div>
 
           {(formData.type === "photo" || formData.type === "video") && (
-            <div>
-              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
-                File Upload
-              </label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileChange}
-                  accept={formData.type === "photo" ? "image/*" : "video/*"}
-                  className="hidden"
-                />
-                {selectedFile ? (
-                  <div>
-                    <p className="text-slate-900 dark:text-white font-medium">{selectedFile.name}</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-2 text-amber-400 hover:text-amber-300 text-sm"
-                    >
-                      Change file
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="text-slate-400 dark:text-slate-400 mb-2">
-                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                    </div>
-                    <p className="text-slate-600 dark:text-slate-300 mb-2">
-                      Click to upload {formData.type}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white px-4 py-2 rounded-lg text-sm transition-colors"
-                    >
-                      Choose File
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <label className="flex items-center gap-2 cursor-pointer justify-end">
+              {includeGps && gpsData && (
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  ({Math.abs(gpsData.latitude).toFixed(4)}° {gpsData.latitude >= 0 ? "N" : "S"}, {Math.abs(gpsData.longitude).toFixed(4)}° {gpsData.longitude >= 0 ? "E" : "W"})
+                </span>
+              )}
+              <span className="text-sm text-slate-600 dark:text-slate-300">Include GPS coordinates</span>
+              <input
+                type="checkbox"
+                checked={includeGps}
+                onChange={(e) => setIncludeGps(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-amber-400 focus:ring-amber-400 bg-slate-100 dark:bg-slate-700"
+              />
+            </label>
           )}
 
           <div className="flex gap-3 pt-4">

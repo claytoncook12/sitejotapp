@@ -12,6 +12,8 @@ import { LandingPage } from "./components/LandingPage";
 import { SignInPage } from "./components/SignInPage";
 import { SignUpPage } from "./components/SignUpPage";
 import { ProfilePage } from "./components/ProfilePage";
+import { OfflineBanner } from "./components/OfflineBanner";
+import { SyncManager } from "./components/SyncManager";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Id } from "../convex/_generated/dataModel";
 
@@ -205,6 +207,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
+      <OfflineBanner />
+      <Authenticated>
+        <SyncManager />
+      </Authenticated>
       <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 sm:py-4 print:hidden">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <button

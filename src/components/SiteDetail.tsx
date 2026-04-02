@@ -8,6 +8,15 @@ import { toast } from "sonner";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
+import { useOnlineStatus } from "../lib/useOnlineStatus";
+import {
+  useOfflineQuery,
+  useOfflineMutation,
+  generateTempId,
+  isTempId,
+  getQueuedFile,
+  type PendingMutation,
+} from "../lib/offlineDb";
 
 type Screen = 
   | { type: "dashboard" }
@@ -33,7 +42,14 @@ function VisitObservations({
   onNavigate: (screen: Screen) => void;
   isExpanded: boolean;
 }) {
-  const observations = useQuery(api.observations.listByVisit, { visitId }) || [];
+  const isTempVisit = isTempId(visitId as string);
+  const observationsRaw = useQuery(api.observations.listByVisit, isTempVisit ? "skip" : { visitId });
+  const observations = useOfflineQuery(
+    isTempVisit ? [] : (observationsRaw ?? undefined),
+    "observations.listByVisit",
+    { visitId },
+    (data, pending) => mergeObservationsWithPending(data, pending, visitId as string),
+  ) || [];
   const updateObservation = useMutation(api.observations.update);
   const deleteObservation = useMutation(api.observations.remove);
   const reorderObservations = useMutation(api.observations.reorder);
@@ -46,12 +62,47 @@ function VisitObservations({
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
     const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [expandedMaps, setExpandedMaps] = useState<Set<string>>(new Set());
+  const [offlineBlobUrls, setOfflineBlobUrls] = useState<Record<string, string>>({});
+
+  // Load blob URLs for offline file observations
+  useEffect(() => {
+    let cancelled = false;
+    const offlineObs = observations.filter((o: any) => o._offline && o._tempFileId);
+    if (offlineObs.length === 0) return;
+
+    Promise.all(
+      offlineObs.map(async (o: any) => {
+        const file = await getQueuedFile(o._tempFileId);
+        if (file) return { id: o._id, url: URL.createObjectURL(file.blob) };
+        return null;
+      }),
+    ).then((results) => {
+      if (cancelled) return;
+      const urls: Record<string, string> = {};
+      for (const r of results) {
+        if (r) urls[r.id] = r.url;
+      }
+      setOfflineBlobUrls((prev) => ({ ...prev, ...urls }));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [observations.map((o: any) => o._id).join()]);
+
+  // Clean up blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(offlineBlobUrls).forEach(URL.revokeObjectURL);
+    };
+  }, []);
 
   // Drag-to-reorder state
   type ObservationType = typeof observations[number];
   const [localObservations, setLocalObservations] = useState<ObservationType[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const draggedItemRef = useRef<ObservationType | null>(null);
+  const canReorder = !isTempVisit && localObservations.every((o) => !isTempId(o._id as string));
 
   // Sync local state with server data
   const observationsKey = JSON.stringify(observations.map((o) => o._id));
@@ -237,17 +288,18 @@ function VisitObservations({
         {localObservations.map((observation, index) => (
           <div
             key={observation._id}
-            draggable
-            onDragStart={(e) => handleDragStart(e, index)}
+            draggable={canReorder}
+            onDragStart={(e) => canReorder && handleDragStart(e, index)}
             onDragEnd={handleDragEnd}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={handleDrop}
-            className={`bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 cursor-grab active:cursor-grabbing transition-all ${
+            onDragOver={(e) => canReorder && handleDragOver(e, index)}
+            onDrop={(e) => canReorder && handleDrop(e)}
+            className={`bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 ${canReorder ? "cursor-grab active:cursor-grabbing" : ""} transition-all ${
               draggedIndex === index ? "ring-2 ring-amber-400" : ""
             }`}
           >
             <div className="flex items-start gap-3">
               {/* Move buttons and drag handle */}
+              {canReorder && (
               <div className="flex flex-col items-center gap-1">
                 <button
                   onClick={() => moveToTop(index)}
@@ -275,6 +327,7 @@ function VisitObservations({
                   </svg>
                 </button>
               </div>
+              )}
               <div className="text-amber-400 mt-1">
                 {getTypeIcon(observation.type)}
               </div>
@@ -290,32 +343,33 @@ function VisitObservations({
                 
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Inline media display */}
-                  {observation.type === "photo" && observation.fileUrl && (
+                  {observation.type === "photo" && (observation.fileUrl || offlineBlobUrls[observation._id]) && (
                     <div className="flex-shrink-0">
                       <img
-                        src={observation.fileUrl}
+                        src={observation.fileUrl || offlineBlobUrls[observation._id]}
                         alt="Observation thumbnail"
                         className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => {
-                          if (observation.fileUrl) {
-                            setModalImageUrl(observation.fileUrl);
+                          const url = observation.fileUrl || offlineBlobUrls[observation._id];
+                          if (url) {
+                            setModalImageUrl(url);
                           }
                         }}
                       />
                     </div>
                   )}
                   
-                    {observation.type === "video" && observation.fileUrl && (
+                    {observation.type === "video" && (observation.fileUrl || offlineBlobUrls[observation._id]) && (
                       <div className="flex-shrink-0 relative">
                         <video
-                          src={observation.fileUrl}
+                          src={observation.fileUrl || offlineBlobUrls[observation._id]}
                           controls
                           controlsList="nofullscreen"
                           className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600"
                           preload="metadata"
                         />
                         <button
-                          onClick={() => setModalVideoUrl(observation.fileUrl)}
+                          onClick={() => setModalVideoUrl(observation.fileUrl || offlineBlobUrls[observation._id])}
                           className="absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full p-2 transition-colors z-10"
                           title="View fullscreen"
                         >
@@ -600,9 +654,22 @@ function VisitObservations({
 }
 
 export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
-  const site = useQuery(api.sites.get, { siteId });
-  const visits = useQuery(api.visits.list, { siteId }) || [];
+  const isOnline = useOnlineStatus();
+  const { queueOffline } = useOfflineMutation();
+
+  const siteRaw = useQuery(api.sites.get, { siteId });
+  const visitsRaw = useQuery(api.visits.list, { siteId });
   const sitePlans = useQuery(api.sitePlans.list, { siteId }) || [];
+
+  // Offline-aware queries
+  const site = useOfflineQuery(siteRaw, "sites.get", { siteId });
+  const visits = useOfflineQuery(
+    visitsRaw ?? undefined,
+    "visits.list",
+    { siteId },
+    (data, pending) => mergeVisitsWithPending(data, pending, siteId),
+  ) || [];
+
   const updateSite = useMutation(api.sites.update);
   const toggleShare = useMutation(api.sites.toggleShare);
   const createVisit = useMutation(api.visits.create);
@@ -636,9 +703,12 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
   const [isUploadingPlan, setIsUploadingPlan] = useState(false);
   const planFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Expand most recent visit by default when visits load
+  const hasAutoExpanded = useRef(false);
+
+  // Expand most recent visit by default when visits first load
   useEffect(() => {
-    if (visits.length > 0 && expandedVisits.size === 0) {
+    if (visits.length > 0 && !hasAutoExpanded.current) {
+      hasAutoExpanded.current = true;
       setExpandedVisits(new Set([visits[0]._id]));
     }
   }, [visits]);
@@ -692,11 +762,30 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
 
   const handleCreateVisit = async () => {
     try {
-      const visitId = await createVisit({
-        siteId,
-        visitDate: newVisitDate,
-      });
-      toast.success("Visit created successfully");
+      let visitId: string;
+
+      if (isOnline) {
+        visitId = await createVisit({
+          siteId,
+          visitDate: newVisitDate,
+        });
+      } else {
+        // Queue for offline sync
+        visitId = generateTempId("visits");
+        await queueOffline({
+          mutationName: "visits.create",
+          args: { siteId, visitDate: newVisitDate },
+          tempId: visitId,
+          tempIdTable: "visits",
+        });
+        toast.info("Visit saved offline — will sync when online");
+      }
+
+      if (!isOnline) {
+        toast.info("Visit saved offline — will sync when online");
+      } else {
+        toast.success("Visit created successfully");
+      }
       setShowNewVisitForm(false);
       setNewVisitDate(new Date().toISOString().split("T")[0]);
       // Expand the new visit
@@ -915,6 +1004,8 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
                 📄 Generate Report
               </button>
               <button
+                disabled={!isOnline}
+                title={!isOnline ? "Sharing is unavailable while offline" : undefined}
                 onClick={async () => {
                   try {
                     const result = await toggleShare({ siteId });
@@ -929,10 +1020,10 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
                     toast.error("Failed to toggle sharing");
                   }
                 }}
-                className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium text-sm transition-colors text-center ${
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium text-sm transition-colors text-center disabled:cursor-not-allowed disabled:opacity-50 ${
                   site.isShared
-                    ? "bg-green-500 hover:bg-green-600 text-white"
-                    : "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white"
+                    ? "bg-green-500 hover:bg-green-600 disabled:hover:bg-green-500 text-white"
+                    : "bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 disabled:hover:bg-slate-300 dark:disabled:hover:bg-slate-600 text-slate-900 dark:text-white"
                 }`}
               >
                 {site.isShared ? "🔗 Shared" : "🔗 Share"}
@@ -961,7 +1052,7 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
       </div>
 
       {/* Site Boundary */}
-      <div className="mb-6">
+      <div className={`mb-6 ${!isOnline ? "opacity-50 pointer-events-none" : ""}`} title={!isOnline ? "Site boundary editing is unavailable while offline" : undefined}>
         <SiteBoundaryEditor siteId={siteId} siteName={site.name} />
       </div>
 
@@ -1083,8 +1174,9 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
                         e.stopPropagation();
                         startEditingVisit(visit._id, visit.visitDate);
                       }}
-                      className="p-1 text-slate-400 hover:text-amber-400 transition-colors"
-                      title="Edit visit date"
+                      disabled={!isOnline}
+                      className="p-1 text-slate-400 hover:text-amber-400 disabled:hover:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                      title={!isOnline ? "Editing is unavailable while offline" : "Edit visit date"}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -1146,7 +1238,9 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
           <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Site Plans ({sitePlans.length})</h3>
           <button
             onClick={() => setShowAddPlanModal(true)}
-            className="hidden lg:block w-full sm:w-auto bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg font-medium transition-colors"
+            disabled={!isOnline}
+            title={!isOnline ? "Site plans cannot be managed while offline" : undefined}
+            className="hidden lg:block w-full sm:w-auto bg-amber-400 hover:bg-amber-500 disabled:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 text-slate-900 px-4 py-2 rounded-lg font-medium transition-colors"
           >
             + Add Site Plan
           </button>
@@ -1170,7 +1264,9 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
             <p className="text-slate-500 dark:text-slate-400 mb-4">Upload floor plans or site maps to mark observation locations</p>
             <button
               onClick={() => setShowAddPlanModal(true)}
-              className="hidden lg:inline-flex bg-amber-400 hover:bg-amber-500 text-slate-900 px-6 py-2 rounded-lg font-medium transition-colors"
+              disabled={!isOnline}
+              title={!isOnline ? "Site plans cannot be managed while offline" : undefined}
+              className="hidden lg:inline-flex bg-amber-400 hover:bg-amber-500 disabled:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 text-slate-900 px-6 py-2 rounded-lg font-medium transition-colors"
             >
               Add First Site Plan
             </button>
@@ -1180,11 +1276,11 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
             {sitePlans.map((plan) => (
               <div
                 key={plan._id}
-                className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden group"
+                className={`bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden group ${!isOnline ? "opacity-50 pointer-events-none" : ""}`}
               >
                 <div
-                  className="aspect-video bg-slate-100 dark:bg-slate-700 cursor-pointer relative"
-                  onClick={() => onNavigate({ type: "plan-viewer", siteId, planId: plan._id })}
+                  className={`aspect-video bg-slate-100 dark:bg-slate-700 relative ${isOnline ? "cursor-pointer" : "cursor-not-allowed"}`}
+                  onClick={() => isOnline && onNavigate({ type: "plan-viewer", siteId, planId: plan._id })}
                 >
                   {plan.imageUrl && (
                     <img
@@ -1207,10 +1303,11 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeletePlan(plan._id);
+                      if (isOnline) handleDeletePlan(plan._id);
                     }}
-                    className="hidden lg:block p-2 text-slate-400 hover:text-red-500 transition-colors"
-                    title="Delete plan"
+                    disabled={!isOnline}
+                    className="hidden lg:block p-2 text-slate-400 hover:text-red-500 disabled:hover:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                    title={!isOnline ? "Site plans cannot be managed while offline" : "Delete plan"}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1297,4 +1394,63 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
       )}
     </div>
   );
+}
+
+// ── Offline merge helpers ─────────────────────────────────────────
+
+function mergeVisitsWithPending(
+  serverVisits: any[],
+  pending: PendingMutation[],
+  siteId: string,
+): any[] {
+  const offlineVisits = pending
+    .filter(
+      (m) =>
+        m.mutationName === "visits.create" &&
+        m.args.siteId === siteId &&
+        (m.status === "pending" || m.status === "syncing") &&
+        m.tempId,
+    )
+    .map((m) => ({
+      _id: m.tempId!,
+      siteId: m.args.siteId as string,
+      visitDate: m.args.visitDate as string,
+      userId: "offline",
+      _creationTime: m.createdAt,
+      _offline: true,
+    }));
+
+  return [...offlineVisits, ...serverVisits];
+}
+
+function mergeObservationsWithPending(
+  serverObservations: any[],
+  pending: PendingMutation[],
+  visitId: string,
+): any[] {
+  const offlineObs = pending
+    .filter(
+      (m) =>
+        m.mutationName === "observations.create" &&
+        (m.args.visitId === visitId ||
+          // If visitId is a temp ID, check if the mutation's visitId matches
+          (isTempId(visitId) && m.args.visitId === visitId)) &&
+        (m.status === "pending" || m.status === "syncing") &&
+        m.tempId,
+    )
+    .map((m) => ({
+      _id: m.tempId!,
+      visitId: m.args.visitId as string,
+      description: (m.args.description as string) || "",
+      type: (m.args.type as string) || "note",
+      fileUrl: undefined,
+      latitude: m.args.latitude as number | undefined,
+      longitude: m.args.longitude as number | undefined,
+      gpsAccuracy: m.args.gpsAccuracy as number | undefined,
+      _creationTime: m.createdAt,
+      _offline: true,
+      _tempFileId: m.args.fileId as string | undefined,
+    }));
+
+  return [...serverObservations, ...offlineObs];
 }

@@ -5,6 +5,8 @@ import { Id } from "../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Polygon, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
+import { useOfflineQuery } from "../lib/offlineDb";
+import { useOnlineStatus } from "../lib/useOnlineStatus";
 
 // Component to fit map to polygon bounds
 function FitToBounds({ coordinates }: { coordinates: number[][] }) {
@@ -125,7 +127,9 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const sites = useQuery(api.sites.list) || [];
+  const sitesRaw = useQuery(api.sites.list);
+  const sites = useOfflineQuery(sitesRaw ?? undefined, "sites.list", {}) || [];
+  const isOnline = useOnlineStatus();
   const createSite = useMutation(api.sites.create);
   const deleteSite = useMutation(api.sites.remove);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -275,7 +279,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </div>
         <button
           onClick={() => setShowCreateForm(true)}
-          className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base whitespace-nowrap"
+          disabled={!isOnline}
+          title={!isOnline ? "Sites cannot be created while offline" : undefined}
+          className="bg-amber-400 hover:bg-amber-500 disabled:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 text-slate-900 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base whitespace-nowrap"
         >
           <span className="sm:hidden">+ New</span>
           <span className="hidden sm:inline">+ New Site Visit</span>
@@ -628,8 +634,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </button>
               <button
                 onClick={(e) => handleDelete(site._id, e)}
-                className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
-                title="Delete site"
+                disabled={!isOnline}
+                title={!isOnline ? "Deleting is unavailable while offline" : "Delete site"}
+                className="px-3 py-2 bg-red-500 hover:bg-red-600 disabled:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -697,7 +704,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <p className="text-slate-500 dark:text-slate-400 mb-4">Create your first site visit to get started</p>
           <button
             onClick={() => setShowCreateForm(true)}
-            className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-6 py-2 rounded-lg font-medium transition-colors"
+            disabled={!isOnline}
+            title={!isOnline ? "Sites cannot be created while offline" : undefined}
+            className="bg-amber-400 hover:bg-amber-500 disabled:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 text-slate-900 px-6 py-2 rounded-lg font-medium transition-colors"
           >
             Create Site Visit
           </button>

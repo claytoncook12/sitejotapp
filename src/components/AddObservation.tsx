@@ -4,6 +4,15 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { CameraCapture, GpsData } from "./CameraCapture";
+import { useOnlineStatus } from "../lib/useOnlineStatus";
+import {
+  useOfflineMutation,
+  generateTempId,
+  isTempId,
+  queueFile,
+} from "../lib/offlineDb";
+import { compressImage } from "../lib/imageCompression";
+import { useStorageQuota } from "../lib/useStorageQuota";
 
 type Screen = 
   | { type: "dashboard" }
@@ -18,6 +27,9 @@ interface AddObservationProps {
 }
 
 export function AddObservation({ siteId, visitId, onNavigate }: AddObservationProps) {
+  const isOnline = useOnlineStatus();
+  const { queueOffline } = useOfflineMutation();
+  const storageQuota = useStorageQuota();
   const createObservation = useMutation(api.observations.create);
   const generateUploadUrl = useMutation(api.observations.generateUploadUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,38 +86,88 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
     setIsSubmitting(true);
 
     try {
-      let fileId: Id<"_storage"> | undefined;
-
-      if (selectedFile && (formData.type === "photo" || formData.type === "video")) {
-        // Upload file first
-        const uploadUrl = await generateUploadUrl();
-        const result = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": selectedFile.type },
-          body: selectedFile,
-        });
-
-        if (!result.ok) {
-          throw new Error("Failed to upload file");
-        }
-
-        const json = await result.json();
-        fileId = json.storageId;
-      }
-
       const shouldIncludeGps = includeGps && (formData.type === "photo" || formData.type === "video");
 
-      await createObservation({
-        visitId,
-        description: formData.description,
-        type: formData.type,
-        fileId,
-        latitude: shouldIncludeGps ? gpsData?.latitude : undefined,
-        longitude: shouldIncludeGps ? gpsData?.longitude : undefined,
-        gpsAccuracy: shouldIncludeGps ? gpsData?.accuracy : undefined,
-      });
+      if (isOnline) {
+        // Online: normal flow
+        let fileId: Id<"_storage"> | undefined;
 
-      toast.success("Observation added successfully");
+        if (selectedFile && (formData.type === "photo" || formData.type === "video")) {
+          const uploadUrl = await generateUploadUrl();
+          const result = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": selectedFile.type },
+            body: selectedFile,
+          });
+
+          if (!result.ok) {
+            throw new Error("Failed to upload file");
+          }
+
+          const json = await result.json();
+          fileId = json.storageId;
+        }
+
+        await createObservation({
+          visitId,
+          description: formData.description,
+          type: formData.type,
+          fileId,
+          latitude: shouldIncludeGps ? gpsData?.latitude : undefined,
+          longitude: shouldIncludeGps ? gpsData?.longitude : undefined,
+          gpsAccuracy: shouldIncludeGps ? gpsData?.accuracy : undefined,
+        });
+
+        toast.success("Observation added successfully");
+      } else {
+        // Offline: queue mutation and file
+        let fileField: string | undefined;
+        let tempFileId: string | undefined;
+
+        if (selectedFile && (formData.type === "photo" || formData.type === "video")) {
+          if (storageQuota.isFull) {
+            toast.error("Offline storage is full — connect to sync before adding more files");
+            setIsSubmitting(false);
+            return;
+          }
+
+          tempFileId = generateTempId("file");
+          // Compress images before storing offline
+          const fileToStore =
+            formData.type === "photo" ? await compressImage(selectedFile) : selectedFile;
+          await queueFile(tempFileId, fileToStore, fileToStore.type);
+          fileField = "fileId";
+
+          if (storageQuota.isWarning) {
+            toast.warning(`Offline storage is ${storageQuota.percentUsed}% full — sync soon`);
+          }
+        }
+
+        const dependsOnTempIds: string[] = [];
+        if (isTempId(visitId as string)) {
+          dependsOnTempIds.push(visitId as string);
+        }
+
+        await queueOffline({
+          mutationName: "observations.create",
+          args: {
+            visitId,
+            description: formData.description,
+            type: formData.type,
+            fileId: tempFileId,
+            latitude: shouldIncludeGps ? gpsData?.latitude : undefined,
+            longitude: shouldIncludeGps ? gpsData?.longitude : undefined,
+            gpsAccuracy: shouldIncludeGps ? gpsData?.accuracy : undefined,
+          },
+          tempId: generateTempId("observations"),
+          tempIdTable: "observations",
+          dependsOnTempIds: dependsOnTempIds.length > 0 ? dependsOnTempIds : undefined,
+          fileFieldName: fileField,
+        });
+
+        toast.info("Observation saved offline — will sync when online");
+      }
+
       onNavigate({ type: "site-detail", siteId });
     } catch (error) {
       console.error("Error creating observation:", error);
@@ -120,6 +182,18 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
       <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Add Observation</h2>
         
+        {!isOnline && storageQuota.isWarning && (
+          <div className={`mb-4 p-3 rounded-lg text-sm font-medium ${
+            storageQuota.isFull
+              ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+              : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+          }`}>
+            {storageQuota.isFull
+              ? `Offline storage full (${storageQuota.usedMB} MB) — sync to free space`
+              : `Offline storage ${storageQuota.percentUsed}% used (${storageQuota.usedMB} / ${storageQuota.softLimitMB} MB)`}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
@@ -266,7 +340,7 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (!isOnline && storageQuota.isFull)}
               className="flex-1 bg-amber-400 hover:bg-amber-500 disabled:bg-amber-600 text-slate-900 py-3 rounded-lg font-medium transition-colors"
             >
               {isSubmitting ? "Adding..." : "Add Observation"}

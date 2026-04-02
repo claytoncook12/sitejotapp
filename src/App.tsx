@@ -166,7 +166,7 @@ export default function App() {
   if (route.type === "landing") {
     return (
       <>
-        <LandingPage onNavigate={(p) => handleNavigate(p)} />
+        <LandingPage onNavigate={(p) => handleNavigate(p)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         <Toaster />
       </>
     );

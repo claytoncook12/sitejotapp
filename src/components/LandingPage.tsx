@@ -1,4 +1,4 @@
-export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void }) {
+export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigate: (path: string) => void; isDarkMode: boolean; toggleTheme: () => void }) {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
       {/* NAV */}
@@ -23,18 +23,50 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
             <a href="#features" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">Features</a>
             <a href="#how" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">How It Works</a>
             <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? (
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              )}
+            </button>
+            <button
               onClick={() => onNavigate("/signin")}
               className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               Login
             </button>
           </div>
-          <button
-            onClick={() => onNavigate("/signin")}
-            className="sm:hidden bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            Login
-          </button>
+          <div className="flex sm:hidden items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? (
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={() => onNavigate("/signin")}
+              className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Login
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -67,17 +99,17 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
       </section>
 
       {/* STATS */}
-      <div className="bg-slate-800 dark:bg-slate-800 border-y border-slate-700">
+      <div className="bg-slate-200 dark:bg-slate-800 border-y border-slate-300 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-wrap justify-center gap-12 sm:gap-20">
           {[
             { num: "10×", label: "Faster documentation" },
             { num: "100%", label: "Field-ready on any device" },
             { num: "0", label: "Lost observations" },
-            { num: "1-click", label: "Observation sharing" },
+            { num: "1-click", label: "Sharing" },
           ].map((s) => (
             <div key={s.label} className="text-center">
-              <span className="block text-2xl sm:text-3xl font-bold text-amber-400">{s.num}</span>
-              <span className="block text-xs uppercase tracking-wider text-slate-400 mt-1">{s.label}</span>
+              <span className="block text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">{s.num}</span>
+              <span className="block text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">{s.label}</span>
             </div>
           ))}
         </div>
@@ -148,7 +180,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
           </div>
 
           {/* Mockup */}
-          <div className="bg-slate-800 dark:bg-slate-800 rounded-lg p-5 border border-slate-700 lg:sticky lg:top-24">
+          <div className="bg-slate-800 rounded-lg p-5 border border-slate-700 lg:sticky lg:top-24">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-700">
               <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
               <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
@@ -191,10 +223,10 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
       </section>
 
       {/* HOW IT WORKS */}
-      <div className="bg-slate-800 dark:bg-slate-800 border-y border-slate-700" id="how">
+      <div className="bg-slate-200 dark:bg-slate-800 border-y border-slate-300 dark:border-slate-700" id="how">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
-          <span className="text-xs font-medium uppercase tracking-wider text-amber-400 mb-4 block">How it works</span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-12">On-site in 4 steps.</h2>
+          <span className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-4 block">How it works</span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-12">On-site in 4 steps.</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { num: "01", title: "Open a Visit", desc: "Create a new site visit in seconds. Name it, tag the location, and you're ready to document." },
@@ -202,10 +234,10 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
               { num: "03", title: "Review & Annotate", desc: "Add notes, mark priorities, and organize your findings before you leave the site." },
               { num: "04", title: "Share the Report", desc: "Generate a professional report instantly. Send a link or export a PDF — done before you're in the car." },
             ].map((s) => (
-              <div key={s.num} className="bg-slate-900/50 rounded-lg p-6 hover:bg-slate-900/80 transition-colors">
-                <span className="block text-3xl font-bold text-amber-400/20 mb-4">{s.num}</span>
-                <h4 className="text-sm font-semibold text-white mb-2">{s.title}</h4>
-                <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
+              <div key={s.num} className="bg-white dark:bg-slate-900/50 rounded-lg p-6 hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors border border-slate-200 dark:border-transparent">
+                <span className="block text-3xl font-bold text-amber-500/20 dark:text-amber-400/20 mb-4">{s.num}</span>
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">{s.title}</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -214,13 +246,13 @@ export function LandingPage({ onNavigate }: { onNavigate: (path: string) => void
 
       {/* CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
-        <div className="bg-slate-800 dark:bg-slate-800 rounded-lg p-12 sm:p-16 text-center relative overflow-hidden border border-slate-700">
+        <div className="bg-slate-200 dark:bg-slate-800 rounded-lg p-12 sm:p-16 text-center relative overflow-hidden border border-slate-300 dark:border-slate-700">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600" />
-          <span className="text-xs font-medium uppercase tracking-wider text-amber-400 mb-6 block">Ready to get started?</span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-5">
+          <span className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-6 block">Ready to get started?</span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-5">
             Your next site visit,<br />fully documented.
           </h2>
-          <p className="text-base text-slate-400 max-w-md mx-auto mb-10 leading-relaxed">
+          <p className="text-base text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-10 leading-relaxed">
             Join engineers who've replaced lost notebooks and endless report-writing with something that actually works.
           </p>
           <button

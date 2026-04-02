@@ -253,7 +253,7 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
                   ({Math.abs(gpsData.latitude).toFixed(4)}° {gpsData.latitude >= 0 ? "N" : "S"}, {Math.abs(gpsData.longitude).toFixed(4)}° {gpsData.longitude >= 0 ? "E" : "W"})
                 </span>
               )}
-              <span className="text-sm text-slate-600 dark:text-slate-300">Include GPS coordinates</span>
+              <span className="text-sm text-slate-600 dark:text-slate-300">Include Current GPS Coordinates</span>
               <input
                 type="checkbox"
                 checked={includeGps}

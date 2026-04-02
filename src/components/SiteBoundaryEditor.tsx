@@ -51,7 +51,7 @@ function FitBounds({ coordinates }: { coordinates: number[][] }) {
       map.fitBounds([
         [bounds.minLat, bounds.minLng],
         [bounds.maxLat, bounds.maxLng],
-      ], { padding: [20, 20] });
+      ], { padding: [40, 40], maxZoom: 16 });
     }
   }, [coordinates, map]);
 

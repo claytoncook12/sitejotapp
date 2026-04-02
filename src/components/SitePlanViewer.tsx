@@ -178,9 +178,10 @@ export function SitePlanViewer({ siteId, planId, onNavigate }: SitePlanViewerPro
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <span className="hidden lg:hidden text-xs text-slate-500 dark:text-slate-400"></span>
           <button
             onClick={() => setIsAddingMarker(!isAddingMarker)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`hidden lg:block px-4 py-2 rounded-lg font-medium transition-colors ${
               isAddingMarker
                 ? "bg-red-500 hover:bg-red-600 text-white"
                 : "bg-amber-400 hover:bg-amber-500 text-slate-900"
@@ -189,6 +190,14 @@ export function SitePlanViewer({ siteId, planId, onNavigate }: SitePlanViewerPro
             {isAddingMarker ? "Cancel" : "+ Add Marker"}
           </button>
         </div>
+      </div>
+
+      {/* Desktop-only editing notice for mobile */}
+      <div className="lg:hidden bg-slate-100 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600 px-4 py-2 flex items-center justify-center gap-2">
+        <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        <span className="text-xs text-slate-500 dark:text-slate-400">Marker editing is available on desktop</span>
       </div>
 
       {/* Add Marker Instructions */}
@@ -363,7 +372,7 @@ export function SitePlanViewer({ siteId, planId, onNavigate }: SitePlanViewerPro
                         setLabelText(selectedMarker.label || "");
                         setEditingLabel(true);
                       }}
-                      className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                      className="hidden lg:block p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -402,7 +411,7 @@ export function SitePlanViewer({ siteId, planId, onNavigate }: SitePlanViewerPro
                     </div>
                     
                     {/* Unlink Button */}
-                    <div className="px-4 pb-4">
+                    <div className="hidden lg:block px-4 pb-4">
                       <button
                         onClick={handleUnlinkObservation}
                         className="text-sm text-red-500 hover:text-red-600 font-medium"
@@ -419,7 +428,7 @@ export function SitePlanViewer({ siteId, planId, onNavigate }: SitePlanViewerPro
                         setSelectedVisitId(visits[0]._id);
                       }
                     }}
-                    className="w-full px-4 py-8 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-400 rounded-lg text-sm transition-colors border-2 border-dashed border-slate-300 dark:border-slate-600"
+                    className="hidden lg:block w-full px-4 py-8 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-400 rounded-lg text-sm transition-colors border-2 border-dashed border-slate-300 dark:border-slate-600"
                   >
                     <svg className="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -439,7 +448,7 @@ export function SitePlanViewer({ siteId, planId, onNavigate }: SitePlanViewerPro
             </div>
 
             {/* Panel Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="hidden lg:block p-4 border-t border-slate-200 dark:border-slate-700">
               <button
                 onClick={handleDeleteMarker}
                 className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"

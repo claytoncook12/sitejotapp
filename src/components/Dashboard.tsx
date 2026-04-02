@@ -27,7 +27,7 @@ function FitToBounds({ coordinates }: { coordinates: number[][] }) {
           [bounds.minLat, bounds.minLng],
           [bounds.maxLat, bounds.maxLng],
         ],
-        { padding: [10, 10] }
+        { padding: [40, 40], maxZoom: 16 }
       );
     }
   }, [coordinates, map]);
@@ -62,7 +62,7 @@ function FitToAllBounds({ sites }: { sites: { boundaryCoordinates: number[][] | 
           [bounds.minLat, bounds.minLng],
           [bounds.maxLat, bounds.maxLng],
         ],
-        { padding: [30, 30] }
+        { padding: [40, 40], maxZoom: 16 }
       );
     }
   }, [sites, map]);
@@ -530,7 +530,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <p className="text-slate-600 dark:text-slate-300 text-sm">{site.location}</p>
             {site.oldestVisitDate && site.newestVisitDate && (
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-                Visit Dates from {site.oldestVisitDate} to {site.newestVisitDate}
+                Visit Dates from {new Date(site.oldestVisitDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} to {new Date(site.newestVisitDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
               </p>
             )}
             {(!site.oldestVisitDate || !site.newestVisitDate) && (

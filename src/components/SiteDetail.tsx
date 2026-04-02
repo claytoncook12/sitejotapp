@@ -40,8 +40,12 @@ function VisitObservations({
 
   const [editingId, setEditingId] = useState<Id<"observations"> | null>(null);
   const [editDescription, setEditDescription] = useState("");
+  const [editLatitude, setEditLatitude] = useState("");
+  const [editLongitude, setEditLongitude] = useState("");
+  const [editAccuracy, setEditAccuracy] = useState("");
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
     const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
+  const [expandedMaps, setExpandedMaps] = useState<Set<string>>(new Set());
 
   // Drag-to-reorder state
   type ObservationType = typeof observations[number];
@@ -55,26 +59,39 @@ function VisitObservations({
     setLocalObservations(observations);
   }, [observationsKey]);
 
-  const startEditing = (observationId: Id<"observations">, currentDescription: string | undefined) => {
+  const startEditing = (observationId: Id<"observations">, currentDescription: string | undefined, obs: ObservationType) => {
     setEditingId(observationId);
     setEditDescription(currentDescription || "");
+    setEditLatitude(obs.latitude != null ? String(obs.latitude) : "");
+    setEditLongitude(obs.longitude != null ? String(obs.longitude) : "");
+    setEditAccuracy(obs.gpsAccuracy != null ? String(obs.gpsAccuracy) : "");
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditDescription("");
+    setEditLatitude("");
+    setEditLongitude("");
+    setEditAccuracy("");
   };
 
   const saveEdit = async () => {
     if (editingId) {
       try {
+        const hasGps = editLatitude.trim() !== "" && editLongitude.trim() !== "";
         await updateObservation({
           observationId: editingId,
           description: editDescription || undefined,
+          ...(hasGps
+            ? {
+                latitude: parseFloat(editLatitude),
+                longitude: parseFloat(editLongitude),
+                gpsAccuracy: editAccuracy.trim() !== "" ? parseFloat(editAccuracy) : undefined,
+              }
+            : { clearGps: true }),
         });
         toast.success("Observation updated");
-        setEditingId(null);
-        setEditDescription("");
+        cancelEditing();
       } catch (error) {
         toast.error("Failed to update observation");
       }
@@ -86,8 +103,7 @@ function VisitObservations({
       try {
         await deleteObservation({ observationId: editingId });
         toast.success("Observation deleted");
-        setEditingId(null);
-        setEditDescription("");
+        cancelEditing();
       } catch (error) {
         toast.error("Failed to delete observation");
       }
@@ -320,6 +336,46 @@ function VisitObservations({
                           className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
                           placeholder="Description (optional)..."
                         />
+                        {(observation.type === "photo" || observation.type === "video") && (
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-slate-500 dark:text-slate-400">GPS Location</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              <input
+                                type="number"
+                                step="any"
+                                value={editLatitude}
+                                onChange={(e) => setEditLatitude(e.target.value)}
+                                className="px-2 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                placeholder="Latitude"
+                              />
+                              <input
+                                type="number"
+                                step="any"
+                                value={editLongitude}
+                                onChange={(e) => setEditLongitude(e.target.value)}
+                                className="px-2 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                placeholder="Longitude"
+                              />
+                              <input
+                                type="number"
+                                step="any"
+                                value={editAccuracy}
+                                onChange={(e) => setEditAccuracy(e.target.value)}
+                                className="col-span-2 sm:col-span-1 px-2 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                placeholder="Accuracy (m)"
+                              />
+                            </div>
+                            {editLatitude && editLongitude && (
+                              <button
+                                type="button"
+                                onClick={() => { setEditLatitude(""); setEditLongitude(""); setEditAccuracy(""); }}
+                                className="text-xs text-red-500 hover:text-red-400 transition-colors"
+                              >
+                                Clear GPS
+                              </button>
+                            )}
+                          </div>
+                        )}
                         <div className="flex gap-2">
                           <button
                             onClick={saveEdit}
@@ -346,7 +402,7 @@ function VisitObservations({
                         <div className="flex items-start justify-between">
                           <p className="text-slate-900 dark:text-white mb-3">{observation.description || <span className="text-slate-400 dark:text-slate-500 italic">No description</span>}</p>
                           <button
-                            onClick={() => startEditing(observation._id, observation.description)}
+                            onClick={() => startEditing(observation._id, observation.description, observation)}
                             className="ml-2 p-1 text-slate-400 hover:text-amber-400 transition-colors"
                             title="Edit observation"
                           >
@@ -363,17 +419,39 @@ function VisitObservations({
                           const lngDir = lng >= 0 ? "E" : "W";
                           const center: LatLngExpression = [lat, lng];
                           const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                          const isMapExpanded = expandedMaps.has(observation._id);
+                          const toggleMap = () => {
+                            setExpandedMaps(prev => {
+                              const next = new Set(prev);
+                              if (next.has(observation._id)) {
+                                next.delete(observation._id);
+                              } else {
+                                next.add(observation._id);
+                              }
+                              return next;
+                            });
+                          };
                           return (
                             <div className="mt-1 mb-2">
-                              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-2">
-                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span>
-                                  {Math.abs(lat).toFixed(4)}° {latDir}, {Math.abs(lng).toFixed(4)}° {lngDir}
-                                  {accuracy != null && ` (±${accuracy < 1000 ? `${Math.round(accuracy)}m` : `${(accuracy / 1000).toFixed(1)}km`})`}
-                                </span>
+                              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                <button
+                                  type="button"
+                                  onClick={toggleMap}
+                                  className="flex items-center gap-1.5 hover:text-amber-400 transition-colors"
+                                  title={isMapExpanded ? "Hide map" : "Show map"}
+                                >
+                                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  <span>
+                                    {Math.abs(lat).toFixed(4)}° {latDir}, {Math.abs(lng).toFixed(4)}° {lngDir}
+                                    {accuracy != null && ` (±${accuracy < 1000 ? `${Math.round(accuracy)}m` : `${(accuracy / 1000).toFixed(1)}km`})`}
+                                  </span>
+                                  <svg className={`w-3 h-3 transition-transform ${isMapExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
                                 <a
                                   href={mapsUrl}
                                   target="_blank"
@@ -383,20 +461,22 @@ function VisitObservations({
                                   Open in Maps
                                 </a>
                               </div>
-                              <div className="w-full h-32 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600">
-                                <MapContainer
-                                  center={center}
-                                  zoom={15}
-                                  scrollWheelZoom={false}
-                                  dragging={false}
-                                  zoomControl={false}
-                                  attributionControl={false}
-                                  style={{ width: "100%", height: "100%" }}
-                                >
-                                  <TileLayer url="https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}" />
-                                  <CircleMarker center={center} radius={8} pathOptions={{ color: "#f59e0b", fillColor: "#f59e0b", fillOpacity: 0.8, weight: 2 }} />
-                                </MapContainer>
-                              </div>
+                              {isMapExpanded && (
+                                <div className="w-full h-32 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600 mt-2">
+                                  <MapContainer
+                                    center={center}
+                                    zoom={15}
+                                    scrollWheelZoom={false}
+                                    dragging={false}
+                                    zoomControl={false}
+                                    attributionControl={false}
+                                    style={{ width: "100%", height: "100%" }}
+                                  >
+                                    <TileLayer url="https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}" />
+                                    <CircleMarker center={center} radius={8} pathOptions={{ color: "#f59e0b", fillColor: "#f59e0b", fillOpacity: 0.8, weight: 2 }} />
+                                  </MapContainer>
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
@@ -425,7 +505,7 @@ function VisitObservations({
       {/* Image Modal */}
       {modalImageUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black"
           onClick={() => setModalImageUrl(null)}
         >
           <div className="relative w-full h-full" onClick={(e) => e.stopPropagation()}>
@@ -493,7 +573,7 @@ function VisitObservations({
         {/* Video Modal */}
         {modalVideoUrl && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black"
             onClick={() => setModalVideoUrl(null)}
           >
             <div className="relative w-full h-full" onClick={(e) => e.stopPropagation()}>
@@ -942,7 +1022,7 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
               className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
               onClick={() => toggleVisitExpanded(visit._id)}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <button
                   className="p-1 text-slate-400 hover:text-amber-400 transition-colors"
                   aria-label={expandedVisits.has(visit._id) ? "Collapse" : "Expand"}
@@ -957,25 +1037,27 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
                   </svg>
                 </button>
                 {editingVisitId === visit._id ? (
-                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="date"
                       value={editVisitDate}
                       onChange={(e) => setEditVisitDate(e.target.value)}
                       className="px-3 py-1 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                     />
-                    <button
-                      onClick={saveVisitEdit}
-                      className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={cancelEditingVisit}
-                      className="px-3 py-1 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Cancel
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={saveVisitEdit}
+                        className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={cancelEditingVisit}
+                        className="px-3 py-1 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -1064,10 +1146,17 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
           <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Site Plans ({sitePlans.length})</h3>
           <button
             onClick={() => setShowAddPlanModal(true)}
-            className="w-full sm:w-auto bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg font-medium transition-colors"
+            className="hidden lg:block w-full sm:w-auto bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-lg font-medium transition-colors"
           >
             + Add Site Plan
           </button>
+        </div>
+
+        <div className="lg:hidden mb-4 flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg">
+          <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Site plan editing is available on desktop</span>
         </div>
 
         {sitePlans.length === 0 ? (
@@ -1081,7 +1170,7 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
             <p className="text-slate-500 dark:text-slate-400 mb-4">Upload floor plans or site maps to mark observation locations</p>
             <button
               onClick={() => setShowAddPlanModal(true)}
-              className="bg-amber-400 hover:bg-amber-500 text-slate-900 px-6 py-2 rounded-lg font-medium transition-colors"
+              className="hidden lg:inline-flex bg-amber-400 hover:bg-amber-500 text-slate-900 px-6 py-2 rounded-lg font-medium transition-colors"
             >
               Add First Site Plan
             </button>
@@ -1120,7 +1209,7 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
                       e.stopPropagation();
                       handleDeletePlan(plan._id);
                     }}
-                    className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                    className="hidden lg:block p-2 text-slate-400 hover:text-red-500 transition-colors"
                     title="Delete plan"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

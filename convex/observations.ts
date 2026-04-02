@@ -76,6 +76,10 @@ export const update = mutation({
   args: {
     observationId: v.id("observations"),
     description: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    gpsAccuracy: v.optional(v.number()),
+    clearGps: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -89,9 +93,21 @@ export const update = mutation({
       throw new Error("Observation not found or access denied");
     }
 
-    return await ctx.db.patch(args.observationId, {
+    const patch: Record<string, unknown> = {
       description: args.description,
-    });
+    };
+
+    if (args.clearGps) {
+      patch.latitude = undefined;
+      patch.longitude = undefined;
+      patch.gpsAccuracy = undefined;
+    } else {
+      if (args.latitude !== undefined) patch.latitude = args.latitude;
+      if (args.longitude !== undefined) patch.longitude = args.longitude;
+      if (args.gpsAccuracy !== undefined) patch.gpsAccuracy = args.gpsAccuracy;
+    }
+
+    return await ctx.db.patch(args.observationId, patch);
   },
 });
 

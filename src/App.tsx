@@ -12,8 +12,11 @@ import { LandingPage } from "./components/LandingPage";
 import { SignInPage } from "./components/SignInPage";
 import { SignUpPage } from "./components/SignUpPage";
 import { ProfilePage } from "./components/ProfilePage";
-import { OfflineBanner } from "./components/OfflineBanner";
+import { OfflineModeBanner, OfflineToggleButton } from "./components/OfflineModeBanner";
+import { OfflineStatusFAB } from "./components/OfflineStatusFAB";
+import { ReconnectionOverlay } from "./components/ReconnectionOverlay";
 import { SyncManager } from "./components/SyncManager";
+import { OnlineStatusProvider } from "./lib/OnlineStatusContext";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Id } from "../convex/_generated/dataModel";
 
@@ -206,10 +209,13 @@ export default function App() {
   const currentScreen: Screen = route as Screen;
 
   return (
+    <OnlineStatusProvider>
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
-      <OfflineBanner />
+      <OfflineModeBanner />
+      <ReconnectionOverlay />
       <Authenticated>
         <SyncManager />
+        <OfflineStatusFAB />
       </Authenticated>
       <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 sm:py-4 print:hidden">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
@@ -233,6 +239,7 @@ export default function App() {
           </button>
           <div className="flex items-center gap-4">
             <Authenticated>
+              <OfflineToggleButton />
               <a
                 href="https://sitejot.featurebase.app/"
                 target="_blank"
@@ -297,6 +304,7 @@ export default function App() {
 
       <Toaster />
     </div>
+    </OnlineStatusProvider>
   );
 }
 

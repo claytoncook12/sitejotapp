@@ -494,6 +494,66 @@ export function useOfflineMutation() {
   return { queueOffline };
 }
 
+// ── Offline Data Inspection ─────────────────────────────────────────
+
+export interface CachedQueryEntry {
+  queryKey: string;
+  queryName: string;
+  updatedAt: number;
+}
+
+export async function getCachedQueryEntries(): Promise<CachedQueryEntry[]> {
+  const db = await getDb();
+  const all = await db.getAll("queryCache");
+  return all.map((entry) => ({
+    queryKey: entry.queryKey,
+    queryName: entry.queryKey.split("::")[0],
+    updatedAt: entry.updatedAt,
+  }));
+}
+
+export interface QueuedFileEntry {
+  tempFileId: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: "pending" | "uploading" | "uploaded";
+}
+
+export async function getQueuedFiles(): Promise<QueuedFileEntry[]> {
+  const db = await getDb();
+  const all = await db.getAll("fileQueue");
+  return all.map((f) => ({
+    tempFileId: f.tempFileId,
+    mimeType: f.mimeType,
+    sizeBytes: f.blob.size,
+    status: f.status,
+  }));
+}
+
+export async function clearAllOfflineData(): Promise<void> {
+  const db = await getDb();
+  const tx1 = db.transaction("queryCache", "readwrite");
+  await tx1.store.clear();
+  await tx1.done;
+  const tx2 = db.transaction("pendingMutations", "readwrite");
+  await tx2.store.clear();
+  await tx2.done;
+  const tx3 = db.transaction("idMap", "readwrite");
+  await tx3.store.clear();
+  await tx3.done;
+  const tx4 = db.transaction("fileQueue", "readwrite");
+  await tx4.store.clear();
+  await tx4.done;
+  await refreshPendingCount();
+}
+
+export async function clearQueryCache(): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction("queryCache", "readwrite");
+  await tx.store.clear();
+  await tx.done;
+}
+
 // ── Initialize on load ──────────────────────────────────────────────
 
 // Refresh pending count on module load

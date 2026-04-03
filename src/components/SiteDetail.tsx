@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
-import { useOnlineStatus } from "../lib/useOnlineStatus";
+import { useEffectiveOnlineStatus } from "../lib/OnlineStatusContext";
 import {
   useOfflineQuery,
   useOfflineMutation,
@@ -654,7 +654,7 @@ function VisitObservations({
 }
 
 export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
-  const isOnline = useOnlineStatus();
+  const isOnline = useEffectiveOnlineStatus();
   const { queueOffline } = useOfflineMutation();
 
   const siteRaw = useQuery(api.sites.get, { siteId });

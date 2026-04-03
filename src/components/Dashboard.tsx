@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { MapContainer, TileLayer, Polygon, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import { useOfflineQuery } from "../lib/offlineDb";
-import { useOnlineStatus } from "../lib/useOnlineStatus";
+import { useEffectiveOnlineStatus } from "../lib/OnlineStatusContext";
 
 // Component to fit map to polygon bounds
 function FitToBounds({ coordinates }: { coordinates: number[][] }) {
@@ -129,7 +129,7 @@ interface DashboardProps {
 export function Dashboard({ onNavigate }: DashboardProps) {
   const sitesRaw = useQuery(api.sites.list);
   const sites = useOfflineQuery(sitesRaw ?? undefined, "sites.list", {}) || [];
-  const isOnline = useOnlineStatus();
+  const isOnline = useEffectiveOnlineStatus();
   const createSite = useMutation(api.sites.create);
   const deleteSite = useMutation(api.sites.remove);
   const [showCreateForm, setShowCreateForm] = useState(false);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useOnlineStatus } from "../lib/useOnlineStatus";
+import { useEffectiveOnlineStatus } from "../lib/OnlineStatusContext";
 import { runSync } from "../lib/offlineDb";
 import { toast } from "sonner";
 
@@ -10,7 +10,7 @@ import { toast } from "sonner";
  * Must be rendered inside ConvexAuthProvider.
  */
 export function SyncManager() {
-  const isOnline = useOnlineStatus();
+  const isOnline = useEffectiveOnlineStatus();
   const wasOfflineRef = useRef(false);
   const isSyncingRef = useRef(false);
 

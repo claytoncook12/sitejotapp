@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 import type { Screen } from "../App";
+import { useStorageQuota } from "../lib/useStorageQuota";
+import { useSyncStatus, getCachedQueryEntries, getQueuedFiles, clearAllOfflineData, clearQueryCache } from "../lib/offlineDb";
 
 export function ProfilePage({
   onNavigate,
@@ -187,6 +189,103 @@ export function ProfilePage({
               })}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* Offline Storage Card */}
+      <OfflineStorageSection />
+    </div>
+  );
+}
+
+function OfflineStorageSection() {
+  const storageQuota = useStorageQuota();
+  const { pendingCount } = useSyncStatus();
+  const [cachedCount, setCachedCount] = useState(0);
+  const [fileCount, setFileCount] = useState(0);
+
+  const refreshCounts = useCallback(async () => {
+    const [queries, files] = await Promise.all([getCachedQueryEntries(), getQueuedFiles()]);
+    setCachedCount(queries.length);
+    setFileCount(files.length);
+  }, []);
+
+  useEffect(() => {
+    refreshCounts();
+  }, [pendingCount, refreshCounts]);
+
+  const handleClearCache = async () => {
+    await clearQueryCache();
+    toast.success("Cache cleared");
+    refreshCounts();
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm("Clear all offline data? Pending changes that haven't synced will be lost.")) return;
+    await clearAllOfflineData();
+    toast.success("All offline data cleared");
+    refreshCounts();
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Offline Storage</h3>
+
+      <div className="space-y-4">
+        {/* Storage quota */}
+        <div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-slate-600 dark:text-slate-300">File queue usage</span>
+            <span className={`font-medium ${
+              storageQuota.isFull ? "text-red-600 dark:text-red-400" : storageQuota.isWarning ? "text-amber-600 dark:text-amber-400" : "text-slate-700 dark:text-slate-200"
+            }`}>
+              {storageQuota.usedMB} / {storageQuota.softLimitMB} MB
+            </span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2.5">
+            <div
+              className={`h-2.5 rounded-full transition-all ${
+                storageQuota.isFull ? "bg-red-500" : storageQuota.isWarning ? "bg-amber-500" : "bg-green-500"
+              }`}
+              style={{ width: `${Math.min(100, storageQuota.percentUsed)}%` }}
+            />
+          </div>
+          {storageQuota.isFull && (
+            <p className="text-xs text-red-500 dark:text-red-400 mt-1">Storage full — new captures blocked</p>
+          )}
+        </div>
+
+        {/* Summary stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{cachedCount}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Cached queries</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{pendingCount}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Pending changes</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{fileCount}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Queued files</p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={handleClearCache}
+            disabled={cachedCount === 0}
+            className="flex-1 px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 rounded-lg transition-colors"
+          >
+            Clear Cache
+          </button>
+          <button
+            onClick={handleClearAll}
+            className="flex-1 px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+          >
+            Clear All Offline Data
+          </button>
         </div>
       </div>
     </div>

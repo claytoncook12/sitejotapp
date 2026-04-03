@@ -258,47 +258,6 @@ export function OfflineDrawer({ open, onClose }: OfflineDrawerProps) {
               </div>
             </div>
 
-            {/* Cached Queries */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Cached Data ({cachedQueries.length})
-                </h3>
-                {cachedQueries.length > 0 && (
-                  <button
-                    onClick={handleClearCache}
-                    className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
-                  >
-                    Clear cache
-                  </button>
-                )}
-              </div>
-              {cachedQueries.length === 0 ? (
-                <p className="text-sm text-slate-400 dark:text-slate-500 italic">No cached data</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {cachedQueries.map((entry) => (
-                    <div
-                      key={entry.queryKey}
-                      className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-sm text-slate-700 dark:text-slate-200 truncate">
-                          {friendlyQueryName(entry)}
-                        </span>
-                      </div>
-                      <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2">
-                        {formatTime(entry.updatedAt)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Pending Mutations */}
             <div className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -375,6 +334,47 @@ export function OfflineDrawer({ open, onClose }: OfflineDrawerProps) {
                           {formatBytes(file.sizeBytes)}
                         </span>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cached Queries */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Cached Data ({cachedQueries.length})
+                </h3>
+                {cachedQueries.length > 0 && (
+                  <button
+                    onClick={handleClearCache}
+                    className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    Clear cache
+                  </button>
+                )}
+              </div>
+              {cachedQueries.length === 0 ? (
+                <p className="text-sm text-slate-400 dark:text-slate-500 italic">No cached data</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {cachedQueries.map((entry) => (
+                    <div
+                      key={entry.queryKey}
+                      className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-sm text-slate-700 dark:text-slate-200 truncate">
+                          {friendlyQueryName(entry)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2">
+                        {formatTime(entry.updatedAt)}
+                      </span>
                     </div>
                   ))}
                 </div>

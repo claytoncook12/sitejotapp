@@ -1,6 +1,6 @@
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 
-const MAX_DURATION_MS = 30_000;
+const MAX_DURATION_MS = 15_000;
 const VIDEO_BITRATE = 1_500_000;
 const AUDIO_BITRATE = 128_000;
 const AUDIO_SAMPLE_RATE = 48000;
@@ -206,8 +206,11 @@ registerProcessor("audio-sampler", AudioSamplerProcessor);
       // Auto-stop at 30 seconds
       autoStopTimeout = setTimeout(() => {
         if (recording) {
-          this.stop();
-          onAutoStop?.();
+          if (onAutoStop) {
+            onAutoStop();
+          } else {
+            this.stop();
+          }
         }
       }, MAX_DURATION_MS);
     },
@@ -317,8 +320,11 @@ function createFallbackRecorder(
 
       autoStopTimeout = setTimeout(() => {
         if (recording) {
-          this.stop();
-          onAutoStop?.();
+          if (onAutoStop) {
+            onAutoStop();
+          } else {
+            this.stop();
+          }
         }
       }, MAX_DURATION_MS);
     },

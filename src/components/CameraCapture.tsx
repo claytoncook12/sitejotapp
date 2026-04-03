@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { openCamera, capturePhoto, stopCamera } from "../lib/camera";
 import { createMp4Recorder, Mp4RecorderHandle } from "../lib/mp4Recorder";
 
-const MAX_DURATION_S = 30;
+const MAX_DURATION_S = 15; // Max video duration in seconds
 
 export interface GpsData {
   latitude: number;
@@ -152,13 +152,14 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
       timerRef.current = null;
     }
 
-    if (recorderRef.current && recorderRef.current.isRecording()) {
-      const file = await recorderRef.current.stop();
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder) {
+      const file = await recorder.stop();
       const url = URL.createObjectURL(file);
       setCapturedBlob(file);
       setCapturedUrl(url);
       setState("review");
-      recorderRef.current = null;
 
       // Stop camera after recording
       stopCamera(streamRef.current);

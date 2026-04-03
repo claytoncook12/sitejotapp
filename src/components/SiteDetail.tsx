@@ -42,8 +42,9 @@ function VisitObservations({
   onNavigate: (screen: Screen) => void;
   isExpanded: boolean;
 }) {
+  const isOnline = useEffectiveOnlineStatus();
   const isTempVisit = isTempId(visitId as string);
-  const observationsRaw = useQuery(api.observations.listByVisit, isTempVisit ? "skip" : { visitId });
+  const observationsRaw = useQuery(api.observations.listByVisit, (!isOnline || isTempVisit) ? "skip" : { visitId });
   const observations = useOfflineQuery(
     isTempVisit ? [] : (observationsRaw ?? undefined),
     "observations.listByVisit",
@@ -657,9 +658,9 @@ export function SiteDetail({ siteId, onNavigate }: SiteDetailProps) {
   const isOnline = useEffectiveOnlineStatus();
   const { queueOffline } = useOfflineMutation();
 
-  const siteRaw = useQuery(api.sites.get, { siteId });
-  const visitsRaw = useQuery(api.visits.list, { siteId });
-  const sitePlans = useQuery(api.sitePlans.list, { siteId }) || [];
+  const siteRaw = useQuery(api.sites.get, isOnline ? { siteId } : "skip");
+  const visitsRaw = useQuery(api.visits.list, isOnline ? { siteId } : "skip");
+  const sitePlans = useQuery(api.sitePlans.list, isOnline ? { siteId } : "skip") || [];
 
   // Offline-aware queries
   const site = useOfflineQuery(siteRaw, "sites.get", { siteId });

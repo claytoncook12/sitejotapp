@@ -127,9 +127,9 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const sitesRaw = useQuery(api.sites.list);
-  const sites = useOfflineQuery(sitesRaw ?? undefined, "sites.list", {}) || [];
   const isOnline = useEffectiveOnlineStatus();
+  const sitesRaw = useQuery(api.sites.list, isOnline ? undefined : "skip");
+  const sites = useOfflineQuery(sitesRaw ?? undefined, "sites.list", {}) || [];
   const createSite = useMutation(api.sites.create);
   const deleteSite = useMutation(api.sites.remove);
   const [showCreateForm, setShowCreateForm] = useState(false);

@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from "react";
+import { useEffectiveOnlineStatus } from "./OnlineStatusContext";
 
 // ── IndexedDB Schema ────────────────────────────────────────────────
 
@@ -411,28 +412,40 @@ export function useOfflineQuery<T>(
   mergePending?: (data: T, pending: PendingMutation[]) => T,
 ): T | undefined {
   const [cachedData, setCachedData] = useState<T | undefined>(undefined);
-  const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+  const isOnline = useEffectiveOnlineStatus();
   const pendingRef = useRef<PendingMutation[]>([]);
   const [, forceUpdate] = useState(0);
+
+  // Stable serialized args — only changes when the actual content changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const argsKey = JSON.stringify(args);
 
   // Cache server data when it arrives
   useEffect(() => {
     if (convexQueryResult !== undefined) {
-      cacheQueryResult(queryName, args, convexQueryResult);
-      setCachedData(convexQueryResult);
+      const parsed = JSON.parse(argsKey);
+      cacheQueryResult(queryName, parsed, convexQueryResult);
+      // Only update state if the data actually changed to avoid re-render loops
+      setCachedData((prev) => {
+        const newStr = JSON.stringify(convexQueryResult);
+        return JSON.stringify(prev) === newStr ? prev : convexQueryResult;
+      });
     }
-  }, [convexQueryResult, queryName, JSON.stringify(args)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convexQueryResult, queryName, argsKey]);
 
   // Load from cache when offline and no server data
   useEffect(() => {
     if (convexQueryResult === undefined) {
-      getCachedQuery(queryName, args).then((cached) => {
+      const parsed = JSON.parse(argsKey);
+      getCachedQuery(queryName, parsed).then((cached) => {
         if (cached !== undefined) {
           setCachedData(cached as T);
         }
       });
     }
-  }, [convexQueryResult, queryName, JSON.stringify(args)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convexQueryResult, queryName, argsKey]);
 
   // Load pending mutations for merge
   useEffect(() => {

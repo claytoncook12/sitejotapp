@@ -4,7 +4,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { CameraCapture, GpsData } from "./CameraCapture";
-import { useOnlineStatus } from "../lib/useOnlineStatus";
+import { useEffectiveOnlineStatus } from "../lib/OnlineStatusContext";
 import {
   useOfflineMutation,
   generateTempId,
@@ -27,7 +27,7 @@ interface AddObservationProps {
 }
 
 export function AddObservation({ siteId, visitId, onNavigate }: AddObservationProps) {
-  const isOnline = useOnlineStatus();
+  const isOnline = useEffectiveOnlineStatus();
   const { queueOffline } = useOfflineMutation();
   const storageQuota = useStorageQuota();
   const createObservation = useMutation(api.observations.create);

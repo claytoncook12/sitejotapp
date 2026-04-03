@@ -14,6 +14,8 @@ import { SignUpPage } from "./components/SignUpPage";
 import { ProfilePage } from "./components/ProfilePage";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { SyncManager } from "./components/SyncManager";
+import { OfflineDrawer, OfflineStatusChip } from "./components/OfflineDrawer";
+import { OnlineStatusProvider } from "./lib/OnlineStatusContext";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Id } from "../convex/_generated/dataModel";
 
@@ -163,6 +165,7 @@ export default function App() {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Landing page — standalone layout
   if (route.type === "landing") {
@@ -206,8 +209,10 @@ export default function App() {
   const currentScreen: Screen = route as Screen;
 
   return (
+    <OnlineStatusProvider>
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
       <OfflineBanner />
+      <OfflineDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <Authenticated>
         <SyncManager />
       </Authenticated>
@@ -233,6 +238,7 @@ export default function App() {
           </button>
           <div className="flex items-center gap-4">
             <Authenticated>
+              <OfflineStatusChip onClick={() => setDrawerOpen(true)} />
               <a
                 href="https://sitejot.featurebase.app/"
                 target="_blank"
@@ -297,6 +303,7 @@ export default function App() {
 
       <Toaster />
     </div>
+    </OnlineStatusProvider>
   );
 }
 

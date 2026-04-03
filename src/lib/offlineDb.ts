@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from "react";
+import { useEffectiveOnlineStatus } from "./OnlineStatusContext";
 
 // ── IndexedDB Schema ────────────────────────────────────────────────
 
@@ -411,7 +412,7 @@ export function useOfflineQuery<T>(
   mergePending?: (data: T, pending: PendingMutation[]) => T,
 ): T | undefined {
   const [cachedData, setCachedData] = useState<T | undefined>(undefined);
-  const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+  const isOnline = useEffectiveOnlineStatus();
   const pendingRef = useRef<PendingMutation[]>([]);
   const [, forceUpdate] = useState(0);
 

@@ -343,43 +343,47 @@ function VisitObservations({
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-4">
-                  {/* Inline media display */}
-                  {observation.type === "photo" && (observation.fileUrl || offlineBlobUrls[observation._id]) && (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={observation.fileUrl || offlineBlobUrls[observation._id]}
-                        alt="Observation thumbnail"
-                        className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => {
-                          const url = observation.fileUrl || offlineBlobUrls[observation._id];
-                          if (url) {
-                            setModalImageUrl(url);
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-                  
-                    {observation.type === "video" && (observation.fileUrl || offlineBlobUrls[observation._id]) && (
-                      <div className="flex-shrink-0 relative">
-                        <video
-                          src={observation.fileUrl || offlineBlobUrls[observation._id]}
-                          controls
-                          controlsList="nofullscreen"
-                          className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600"
-                          preload="metadata"
-                        />
-                        <button
-                          onClick={() => setModalVideoUrl(observation.fileUrl || offlineBlobUrls[observation._id])}
-                          className="absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full p-2 transition-colors z-10"
-                          title="View fullscreen"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7V2H2v9h2V4zm16 0h-7V2h9v9h-2V4zm0 16h-7v2h9v-9h-2v7zm-16 0h7v2H2v-9h2v7z" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
+                  {/* Inline media display — suppress remote URLs when force-offline */}
+                  {(() => {
+                    const mediaUrl = isOnline
+                      ? (observation.fileUrl || offlineBlobUrls[observation._id])
+                      : (offlineBlobUrls[observation._id] || undefined);
+                    return (
+                      <>
+                        {observation.type === "photo" && mediaUrl && (
+                          <div className="flex-shrink-0">
+                            <img
+                              src={mediaUrl}
+                              alt="Observation thumbnail"
+                              className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setModalImageUrl(mediaUrl)}
+                            />
+                          </div>
+                        )}
+
+                        {observation.type === "video" && mediaUrl && (
+                          <div className="flex-shrink-0 relative">
+                            <video
+                              src={mediaUrl}
+                              controls
+                              controlsList="nofullscreen"
+                              className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600"
+                              preload="metadata"
+                            />
+                            <button
+                              onClick={() => setModalVideoUrl(mediaUrl)}
+                              className="absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full p-2 transition-colors z-10"
+                              title="View fullscreen"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7V2H2v9h2V4zm16 0h-7V2h9v9h-2V4zm0 16h-7v2h9v-9h-2v7zm-16 0h7v2H2v-9h2v7z" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   <div className="flex-1">
                     {editingId === observation._id ? (

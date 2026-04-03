@@ -499,17 +499,29 @@ export function useOfflineMutation() {
 export interface CachedQueryEntry {
   queryKey: string;
   queryName: string;
+  args: Record<string, unknown>;
+  data: unknown;
   updatedAt: number;
 }
 
 export async function getCachedQueryEntries(): Promise<CachedQueryEntry[]> {
   const db = await getDb();
   const all = await db.getAll("queryCache");
-  return all.map((entry) => ({
-    queryKey: entry.queryKey,
-    queryName: entry.queryKey.split("::")[0],
-    updatedAt: entry.updatedAt,
-  }));
+  return all.map((entry) => {
+    const queryName = entry.queryKey.split("::")[0];
+    let args: Record<string, unknown> = {};
+    try {
+      const argsStr = entry.queryKey.slice(entry.queryKey.indexOf("::") + 2);
+      args = JSON.parse(argsStr);
+    } catch { /* ignore */ }
+    return {
+      queryKey: entry.queryKey,
+      queryName,
+      args,
+      data: entry.data,
+      updatedAt: entry.updatedAt,
+    };
+  });
 }
 
 export interface QueuedFileEntry {

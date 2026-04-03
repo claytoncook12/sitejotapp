@@ -86,12 +86,34 @@ export function OfflineDrawer({ open, onClose }: OfflineDrawerProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const friendlyQueryName = (name: string) => {
-    // "sites.list" → "Sites List"
-    return name
-      .split(".")
-      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-      .join(" → ");
+  const friendlyQueryName = (entry: CachedQueryEntry) => {
+    const name = entry.queryName;
+    const data = entry.data as Record<string, unknown> | unknown[] | null;
+
+    switch (name) {
+      case "sites.list":
+        if (Array.isArray(data)) return `All Sites (${data.length})`;
+        return "All Sites";
+      case "sites.get": {
+        const siteName = data && typeof data === "object" && !Array.isArray(data)
+          ? (data as Record<string, unknown>).name
+          : null;
+        return siteName ? `Site: ${siteName}` : "Site Detail";
+      }
+      case "visits.list": {
+        const count = Array.isArray(data) ? data.length : null;
+        return count != null ? `Visits (${count})` : "Visits";
+      }
+      case "observations.listByVisit": {
+        const count = Array.isArray(data) ? data.length : null;
+        return count != null ? `Observations (${count})` : "Observations";
+      }
+      default:
+        return name
+          .split(".")
+          .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+          .join(" → ");
+    }
   };
 
   const friendlyMutationName = (name: string) => {
@@ -265,7 +287,7 @@ export function OfflineDrawer({ open, onClose }: OfflineDrawerProps) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span className="text-sm text-slate-700 dark:text-slate-200 truncate">
-                          {friendlyQueryName(entry.queryName)}
+                          {friendlyQueryName(entry)}
                         </span>
                       </div>
                       <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2">

@@ -8,6 +8,9 @@ export function OfflineBanner() {
   if (isEffectivelyOnline && pendingCount === 0 && !isSyncing) return null;
 
   return (
+    <>
+    {/* Spacer to push page content above the fixed banner */}
+    <div className="h-11" />
     <div
       className={`fixed bottom-0 left-0 right-0 z-50 px-4 py-3 text-center text-sm font-medium shadow-lg transition-colors ${
         !isEffectivelyOnline
@@ -46,5 +49,6 @@ export function OfflineBanner() {
         </span>
       ) : null}
     </div>
+    </>
   );
 }

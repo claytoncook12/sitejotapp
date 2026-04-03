@@ -211,7 +211,6 @@ export default function App() {
   return (
     <OnlineStatusProvider>
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
-      <OfflineBanner />
       <OfflineDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <Authenticated>
         <SyncManager />
@@ -302,6 +301,7 @@ export default function App() {
       </main>
 
       <Toaster />
+      <OfflineBanner />
     </div>
     </OnlineStatusProvider>
   );

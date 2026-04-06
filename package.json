@@ -19,6 +19,7 @@
     "idb": "^8.0.3",
     "leaflet": "^1.9.4",
     "mp4-muxer": "^5.2.2",
+    "posthog-node": "^5.28.11",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-leaflet": "^5.0.0",

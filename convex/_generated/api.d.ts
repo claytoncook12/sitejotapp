@@ -13,6 +13,7 @@ import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
 import type * as observations from "../observations.js";
 import type * as planMarkers from "../planMarkers.js";
+import type * as posthog from "../posthog.js";
 import type * as router from "../router.js";
 import type * as sitePlans from "../sitePlans.js";
 import type * as sitePolylines from "../sitePolylines.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   observations: typeof observations;
   planMarkers: typeof planMarkers;
+  posthog: typeof posthog;
   router: typeof router;
   sitePlans: typeof sitePlans;
   sitePolylines: typeof sitePolylines;

@@ -8,11 +8,18 @@ import "./index.css";
 import App from "./App";
 
 // Initialize PostHog analytics
-posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_TOKEN, {
-  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-  ui_host: "https://us.posthog.com",
-  defaults: "2026-01-30",
-});
+const posthogToken = import.meta.env.VITE_PUBLIC_POSTHOG_TOKEN;
+const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
+
+if (posthogToken) {
+  posthog.init(posthogToken, {
+    api_host: posthogHost,
+    ui_host: "https://us.posthog.com",
+    defaults: "2026-01-30",
+  });
+} else {
+  console.warn("PostHog token not found. Analytics disabled.");
+}
 
 // Register service worker for PWA support
 registerSW({

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.80",
+    "@posthog/react": "^1.8.3",
     "@types/geojson": "^7946.0.16",
     "@types/leaflet": "^1.9.21",
     "clsx": "^2.1.1",
@@ -19,6 +20,7 @@
     "idb": "^8.0.3",
     "leaflet": "^1.9.4",
     "mp4-muxer": "^5.2.2",
+    "posthog-js": "^1.364.7",
     "posthog-node": "^5.28.11",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",

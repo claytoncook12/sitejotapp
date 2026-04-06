@@ -18,6 +18,7 @@ import { OfflineDrawer, OfflineStatusChip } from "./components/OfflineDrawer";
 import { OnlineStatusProvider } from "./lib/OnlineStatusContext";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Id } from "../convex/_generated/dataModel";
+import { usePostHog } from "@posthog/react";
 
 type Route =
   | { type: "landing" }
@@ -108,10 +109,24 @@ function navigate(path: string) {
 export default function App() {
   const [route, setRoute] = useState<Route>(parsePath);
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const posthog = usePostHog();
+  const user = useQuery(api.auth.loggedInUser);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem("theme");
     return saved ? saved === "dark" : true;
   });
+
+  // Identify user with PostHog when authenticated
+  useEffect(() => {
+    if (isAuthenticated && user && posthog) {
+      posthog.identify(user._id, {
+        email: user.email as string | undefined,
+        name: user.name as string | undefined,
+      });
+    } else if (!isAuthenticated && !isLoading && posthog) {
+      posthog.reset();
+    }
+  }, [isAuthenticated, isLoading, user, posthog]);
 
   const handleNavigate = useCallback((pathOrScreen: string | Screen) => {
     if (typeof pathOrScreen === "string") {

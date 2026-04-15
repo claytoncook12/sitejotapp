@@ -31,10 +31,12 @@ function MapClickHandler({
 }
 
 // Component to fit map to bounds
-function FitBounds({ coordinates }: { coordinates: number[][] }) {
+function FitBounds({ coordinates, onlyOnce = false }: { coordinates: number[][]; onlyOnce?: boolean }) {
   const map = useMap();
+  const hasFitted = useRef(false);
 
   useEffect(() => {
+    if (onlyOnce && hasFitted.current) return;
     if (coordinates.length > 0) {
       const latLngs = coordinates.map(([lng, lat]) => [lat, lng] as [number, number]);
       const bounds = latLngs.reduce(
@@ -52,8 +54,9 @@ function FitBounds({ coordinates }: { coordinates: number[][] }) {
         [bounds.minLat, bounds.minLng],
         [bounds.maxLat, bounds.maxLng],
       ], { padding: [40, 40], maxZoom: 16 });
+      hasFitted.current = true;
     }
-  }, [coordinates, map]);
+  }, [coordinates, map, onlyOnce]);
 
   return null;
 }
@@ -83,20 +86,38 @@ export function SiteBoundaryEditor({ siteId, siteName }: SiteBoundaryEditorProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Zoom to location state
-  const [zoomLat, setZoomLat] = useState("");
-  const [zoomLng, setZoomLng] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [flyLat, setFlyLat] = useState(0);
+  const [flyLng, setFlyLng] = useState(0);
   const [flyTrigger, setFlyTrigger] = useState(0);
   
   // Tile layer state
   const [tileLayer, setTileLayer] = useState<"osm" | "usgs" | "esri">("osm");
+
+  // User's current location as default center
+  const [userLocation, setUserLocation] = useState<LatLngExpression | null>(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation([position.coords.latitude, position.coords.longitude]);
+        },
+        () => {
+          // Fallback if geolocation denied/unavailable
+          setUserLocation([38.0, -84.5]);
+        }
+      );
+    }
+  }, []);
 
   // Convert GeoJSON coordinates [lng, lat] to Leaflet [lat, lng]
   const toLeafletCoords = (coords: number[][]): LatLngExpression[] => {
     return coords.map(([lng, lat]) => [lat, lng] as [number, number]);
   };
 
-  // Default center (Kentucky area based on the example site)
-  const defaultCenter: LatLngExpression = [38.0, -84.5];
+  const defaultCenter: LatLngExpression = userLocation ?? [38.0, -84.5];
 
   const handleMapClick = (lat: number, lng: number) => {
     setEditCoordinates((prev) => [...prev, [lng, lat]]);
@@ -108,24 +129,57 @@ export function SiteBoundaryEditor({ siteId, siteName }: SiteBoundaryEditorProps
 
   const handleClear = () => {
     setEditCoordinates([]);
+    setIsDrawing(true);
   };
 
-  const handleZoomToLocation = () => {
-    const lat = parseFloat(zoomLat);
-    const lng = parseFloat(zoomLng);
-    if (isNaN(lat) || isNaN(lng)) {
-      toast.error("Please enter valid latitude and longitude");
+  const handleZoomToLocation = async () => {
+    const query = searchQuery.trim();
+    if (!query) {
+      toast.error("Please enter an address or coordinates");
       return;
     }
-    if (lat < -90 || lat > 90) {
-      toast.error("Latitude must be between -90 and 90");
+
+    // Check if input looks like coordinates (two numbers separated by comma)
+    const coordMatch = query.match(/^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lng = parseFloat(coordMatch[2]);
+      if (lat < -90 || lat > 90) {
+        toast.error("Latitude must be between -90 and 90");
+        return;
+      }
+      if (lng < -180 || lng > 180) {
+        toast.error("Longitude must be between -180 and 180");
+        return;
+      }
+      setFlyLat(lat);
+      setFlyLng(lng);
+      setFlyTrigger((prev) => prev + 1);
       return;
     }
-    if (lng < -180 || lng > 180) {
-      toast.error("Longitude must be between -180 and 180");
-      return;
+
+    // Otherwise, geocode as an address via Nominatim
+    setIsSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+        { headers: { "Accept": "application/json" } }
+      );
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        toast.error("No results found for that address");
+        return;
+      }
+      const lat = parseFloat(data[0].lat);
+      const lng = parseFloat(data[0].lon);
+      setFlyLat(lat);
+      setFlyLng(lng);
+      setFlyTrigger((prev) => prev + 1);
+    } catch {
+      toast.error("Failed to search for address");
+    } finally {
+      setIsSearching(false);
     }
-    setFlyTrigger((prev) => prev + 1);
   };
 
   const handleSave = async () => {
@@ -399,6 +453,46 @@ export function SiteBoundaryEditor({ siteId, siteName }: SiteBoundaryEditorProps
               </button>
             </div>
 
+            {/* Point count and drawing status */}
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-200 dark:border-slate-700">
+              <span className="text-sm text-slate-600 dark:text-slate-300">
+                {editCoordinates.length} points
+              </span>
+              {isDrawing ? (
+                <span className="text-sm text-amber-500 font-medium">
+                  Click on map to add points
+                </span>
+              ) : (
+                <button
+                  onClick={() => setIsDrawing(true)}
+                  className="text-sm text-amber-400 hover:text-amber-500 font-medium"
+                >
+                  Start Drawing
+                </button>
+              )}
+            </div>
+
+            {/* Search Location */}
+            <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleZoomToLocation(); }}
+                  placeholder="Enter address or lat, lng"
+                  className="flex-1 min-w-0 px-2 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                />
+                <button
+                  onClick={handleZoomToLocation}
+                  disabled={isSearching}
+                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSearching ? "Searching..." : "Search"}
+                </button>
+              </div>
+            </div>
+
             {/* Map */}
             <div className="h-[400px] sm:h-[500px]">
               <MapContainer
@@ -428,15 +522,13 @@ export function SiteBoundaryEditor({ siteId, siteName }: SiteBoundaryEditorProps
                   />
                 )}
                 <MapClickHandler onMapClick={handleMapClick} isDrawing={isDrawing} />
-                <FlyToLocation lat={parseFloat(zoomLat)} lng={parseFloat(zoomLng)} trigger={flyTrigger} />
+                <FlyToLocation lat={flyLat} lng={flyLng} trigger={flyTrigger} />
+                <FitBounds coordinates={editCoordinates} onlyOnce />
                 {editCoordinates.length > 0 && (
-                  <>
-                    <Polygon
-                      positions={toLeafletCoords(editCoordinates)}
-                      pathOptions={{ color: "#f59e0b", weight: 3 }}
-                    />
-                    <FitBounds coordinates={editCoordinates} />
-                  </>
+                  <Polygon
+                    positions={toLeafletCoords(editCoordinates)}
+                    pathOptions={{ color: "#f59e0b", weight: 3 }}
+                  />
                 )}
               </MapContainer>
             </div>
@@ -480,58 +572,8 @@ export function SiteBoundaryEditor({ siteId, siteName }: SiteBoundaryEditorProps
                 </div>
               </div>
 
-              {/* Zoom to Location */}
-              <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center">
-                <div className="flex gap-2 flex-1">
-                  <div className="flex-1">
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Latitude</label>
-                    <input
-                      type="text"
-                      value={zoomLat}
-                      onChange={(e) => setZoomLat(e.target.value)}
-                      placeholder="e.g., 38.0406"
-                      className="w-full px-2 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Longitude</label>
-                    <input
-                      type="text"
-                      value={zoomLng}
-                      onChange={(e) => setZoomLng(e.target.value)}
-                      placeholder="e.g., -84.5037"
-                      className="w-full px-2 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={handleZoomToLocation}
-                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors whitespace-nowrap"
-                >
-                  Zoom to Location
-                </button>
-              </div>
-
               {/* Drawing Controls */}
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-slate-600 dark:text-slate-300">
-                    {editCoordinates.length} points
-                  </span>
-                  {isDrawing ? (
-                    <span className="text-sm text-amber-500 font-medium">
-                      Click on map to add points
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setIsDrawing(true)}
-                      className="text-sm text-amber-400 hover:text-amber-500 font-medium"
-                    >
-                      Start Drawing
-                    </button>
-                  )}
-                </div>
-
                 <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={handleUndo}

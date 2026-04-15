@@ -57,6 +57,11 @@ body {
   border-radius: 4px !important;
 }
 
+/* Yellow calendar picker icon — targets #FBBF24 */
+input.date-yellow::-webkit-calendar-picker-indicator {
+  filter: invert(76%) sepia(67%) saturate(574%) hue-rotate(358deg) brightness(103%) contrast(97%);
+}
+
 .polygon-label::before {
   display: none !important;
 }

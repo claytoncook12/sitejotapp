@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { SignInForm } from "../SignInForm";
 
 export function SignInPage({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const [formStep, setFormStep] = useState<"credentials" | "forgot" | "reset">("credentials");
+  const isForgot = formStep === "forgot" || formStep === "reset";
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 px-4">
       <div className="w-full max-w-md">
@@ -22,19 +25,28 @@ export function SignInPage({ onNavigate }: { onNavigate: (path: string) => void 
             </div>
             <span className="text-xl font-semibold text-slate-900 dark:text-white">SiteJot</span>
           </button>
-          <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Sign In</h2>
-          <p className="text-slate-500 dark:text-slate-300">Welcome back to SiteJot</p>
+          {!isForgot && (
+            <>
+              <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Sign In</h2>
+              <p className="text-slate-500 dark:text-slate-300">Welcome back to SiteJot</p>
+            </>
+          )}
+          {isForgot && (
+            <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Reset Password</h2>
+          )}
         </div>
-        <SignInForm initialFlow="signIn" />
-        <div className="text-center mt-6">
-          <span className="text-sm text-slate-500 dark:text-slate-400">Don't have an account? </span>
-          <button
-            onClick={() => onNavigate("/signup")}
-            className="text-sm text-blue-500 hover:text-blue-600 font-medium hover:underline"
-          >
-            Sign up
-          </button>
-        </div>
+        <SignInForm initialFlow="signIn" onStepChange={setFormStep} />
+        {!isForgot && (
+          <div className="text-center mt-6">
+            <span className="text-sm text-slate-500 dark:text-slate-400">Don't have an account? </span>
+            <button
+              onClick={() => onNavigate("/signup")}
+              className="text-sm text-blue-500 hover:text-blue-600 font-medium hover:underline"
+            >
+              Sign up
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

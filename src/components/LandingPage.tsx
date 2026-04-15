@@ -87,10 +87,6 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
             Start for Free
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
           </button>
-          <a href="#how" className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5">
-            See how it works
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
-          </a>
         </div>
       </section>
 
@@ -98,10 +94,10 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
       <div className="bg-slate-200 dark:bg-slate-800 border-y border-slate-300 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-wrap justify-center gap-12 sm:gap-20">
           {[
-            { num: "10×", label: "Faster documentation" },
             { num: "100%", label: "Field-ready on any device" },
-            { num: "0", label: "Lost observations" },
             { num: "1-click", label: "Sharing" },
+            { num: "0", label: "Lost observations" },
+            { num: "10×", label: "Faster documentation" }
           ].map((s) => (
             <div key={s.label} className="text-center">
               <span className="block text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">{s.num}</span>

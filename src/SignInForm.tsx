@@ -95,12 +95,11 @@ export function SignInForm({ initialFlow = "signIn" }: { initialFlow?: "signIn" 
           }
           void signIn("password", formData)
             .then((result) => {
-              // result is false when the user still needs to verify their email.
-              // This happens on sign-up, or sign-in for an unverified account.
-              if (!result) {
-                setStep({ email: formData.get("email") as string });
-                setSubmitting(false);
-              }
+              // When verification is needed, signIn resolves without signing in.
+              // Transition to the code entry step.
+              const email = formData.get("email") as string;
+              setStep({ email });
+              setSubmitting(false);
             })
             .catch((error) => {
               let toastTitle = "";

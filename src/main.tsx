@@ -22,10 +22,10 @@ if (posthogToken) {
 }
 
 // Register service worker for PWA support
-registerSW({
+const updateSW = registerSW({
   onNeedRefresh() {
     if (confirm("New version available. Reload to update?")) {
-      window.location.reload();
+      updateSW(true);
     }
   },
   onOfflineReady() {

@@ -15,6 +15,7 @@ import { ProfilePage } from "./components/ProfilePage";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { SyncManager } from "./components/SyncManager";
 import { OfflineDrawer, OfflineStatusChip } from "./components/OfflineDrawer";
+import { BetaBadge } from "./components/BetaBadge";
 import { OnlineStatusProvider } from "./lib/OnlineStatusContext";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Id } from "../convex/_generated/dataModel";
@@ -248,7 +249,9 @@ export default function App() {
                 <rect x="25" y="71" width="35" height="5" rx="2" fill="#94a3b8"/>
               </svg>
             </div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">SiteJot</h1>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+              SiteJot<BetaBadge />
+            </h1>
           </button>
           <div className="flex items-center gap-4">
             <Authenticated>

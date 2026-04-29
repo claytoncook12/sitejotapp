@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { SignInForm } from "../SignInForm";
+import { BetaBadge } from "./BetaBadge";
 
 export function SignInPage({ onNavigate }: { onNavigate: (path: string) => void }) {
   const [formStep, setFormStep] = useState<"credentials" | "forgot" | "reset">("credentials");
@@ -23,7 +24,9 @@ export function SignInPage({ onNavigate }: { onNavigate: (path: string) => void 
                 <rect x="25" y="71" width="35" height="5" rx="2" fill="#94a3b8" />
               </svg>
             </div>
-            <span className="text-xl font-semibold text-slate-900 dark:text-white">SiteJot</span>
+            <span className="text-xl font-semibold text-slate-900 dark:text-white">
+              SiteJot<BetaBadge />
+            </span>
           </button>
           {!isForgot && (
             <>

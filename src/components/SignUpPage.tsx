@@ -1,4 +1,5 @@
 import { SignInForm } from "../SignInForm";
+import { BetaBadge } from "./BetaBadge";
 
 export function SignUpPage({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
@@ -20,7 +21,9 @@ export function SignUpPage({ onNavigate }: { onNavigate: (path: string) => void 
                 <rect x="25" y="71" width="35" height="5" rx="2" fill="#94a3b8" />
               </svg>
             </div>
-            <span className="text-xl font-semibold text-slate-900 dark:text-white">SiteJot</span>
+            <span className="text-xl font-semibold text-slate-900 dark:text-white">
+              SiteJot<BetaBadge />
+            </span>
           </button>
           <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Create Account</h2>
           <p className="text-slate-500 dark:text-slate-300">Start documenting your site visits</p>

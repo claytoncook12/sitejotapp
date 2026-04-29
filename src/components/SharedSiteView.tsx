@@ -6,6 +6,7 @@ import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "reac
 import { MapContainer, TileLayer, Polygon, useMap } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { BetaBadge } from "./BetaBadge";
 
 interface SharedSiteViewProps {
   slug: string;
@@ -973,7 +974,9 @@ export function SharedSiteView({ slug, isDarkMode, toggleTheme }: SharedSiteView
                 <rect x="25" y="71" width="35" height="5" rx="2" fill="#94a3b8"/>
               </svg>
             </div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">SiteJot</h1>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+              SiteJot<BetaBadge />
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             <button

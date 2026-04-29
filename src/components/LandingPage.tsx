@@ -1,6 +1,56 @@
+import { useState } from "react";
+import { BetaBadge } from "./BetaBadge";
+
+const BETA_BANNER_STORAGE_KEY = "sitejot-beta-banner-dismissed";
+// TODO: replace with actual feedback URL/mailto when finalized
+const BETA_FEEDBACK_URL = "https://sitejot.featurebase.app/";
+
 export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigate: (path: string) => void; isDarkMode: boolean; toggleTheme: () => void }) {
+  const [bannerDismissed, setBannerDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(BETA_BANNER_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    try {
+      window.localStorage.setItem(BETA_BANNER_STORAGE_KEY, "1");
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
+      {/* BETA BANNER */}
+      {!bannerDismissed && (
+        <div className="bg-blue-600 text-white text-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3">
+            <span className="inline-flex items-center rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Beta</span>
+            <span className="flex-1">
+              SiteJot is in public beta — we'd love your feedback to make it better.{" "}
+              <a href={BETA_FEEDBACK_URL} target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-blue-100">
+                Share feedback &rarr;
+              </a>
+            </span>
+            <button
+              type="button"
+              onClick={dismissBanner}
+              aria-label="Dismiss beta banner"
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* NAV */}
       <nav className="sticky top-0 z-50 bg-white/90 dark:bg-slate-800/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
@@ -16,7 +66,9 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
                 <rect x="25" y="71" width="35" height="5" rx="2" fill="#94a3b8"/>
               </svg>
             </div>
-            <span className="text-xl font-semibold text-slate-900 dark:text-white">SiteJot</span>
+            <span className="text-xl font-semibold text-slate-900 dark:text-white">
+              SiteJot<BetaBadge />
+            </span>
           </a>
           <div className="hidden sm:flex items-center gap-6">
             <a href="#problem" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">The Problem</a>
@@ -107,6 +159,41 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
         </div>
       </div>
 
+      {/* BETA NOTICE */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20" id="beta">
+        <div className="rounded-2xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/30 p-8 sm:p-12">
+          <span className="inline-flex items-center rounded bg-blue-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white mb-4">
+            Beta
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">
+            We're in Beta — Help Shape SiteJot
+          </h2>
+          <p className="text-base text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed mb-4">
+            SiteJot is actively under development and we're looking for engineers to test it in the field and tell us if it actually makes their work easier. We're especially interested in hearing from civil, geotechnical, environmental, construction, and inspection professionals.
+          </p>
+          <p className="text-base text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed mb-4">
+            <span className="font-semibold text-slate-900 dark:text-white">It's free during beta.</span> Your sites, observations, and photos are saved securely — beta status is about polishing features and validating the product, not your data.
+          </p>
+          <p className="text-base text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed mb-8">
+            What helps most: bug reports, missing features that would fit your workflow, and honest reactions about whether SiteJot is genuinely useful to you.
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <a
+              href={BETA_FEEDBACK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors inline-flex items-center gap-2"
+            >
+              Send Feedback
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+            </a>
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              Questions? Reach out anytime.
+            </span>
+          </div>
+        </div>
+      </section>
+
       {/* PROBLEM */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28" id="problem">
         <span className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-4 block">The problem</span>
@@ -160,6 +247,7 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
               { num: "03", title: "One-Click Reports", desc: "Generate a clean, professional report with a single tap. Share via link or export to PDF instantly." },
               { num: "04", title: "Easy to Learn", desc: "No training required. If you've used a notes app, you already know how to use SiteJot." },
               { num: "05", title: "Team Sharing", desc: "Instantly share visits with colleagues or clients. Everyone sees the same information in real time." },
+              { num: "06", title: "Installable & Offline-Ready", desc: "SiteJot is a Progressive Web App — add it to your home screen on iPhone or Android and it runs like a native app, even when you're out of signal." },
             ].map((f) => (
               <div key={f.num} className="flex gap-4 p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <span className="text-xs font-medium text-amber-600 dark:text-amber-400 pt-0.5 min-w-[28px]">{f.num}</span>
@@ -235,6 +323,57 @@ export function LandingPage({ onNavigate, isDarkMode, toggleTheme }: { onNavigat
           </div>
         </div>
       </div>
+
+      {/* INSTALL / PWA */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28" id="install">
+        <span className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-4 block">Install on your phone</span>
+        <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">
+          Add SiteJot to your<br />home screen.
+        </h2>
+        <p className="text-base text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed mb-12">
+          SiteJot is a Progressive Web App (PWA) — no app store, no download. Install it directly from your browser and it behaves like a native app: full-screen, fast, and ready to capture observations even when you're out of signal.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* iOS */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16.365 1.43c0 1.14-.42 2.22-1.18 3.04-.79.85-2.06 1.5-3.1 1.42-.13-1.1.41-2.24 1.13-3.02.81-.88 2.18-1.55 3.15-1.44zM20.5 17.65c-.55 1.27-.82 1.84-1.53 2.96-.99 1.55-2.39 3.48-4.13 3.5-1.55.02-1.95-1.01-4.05-1-2.1.01-2.55 1.02-4.1 1-1.74-.02-3.06-1.77-4.05-3.32-2.78-4.34-3.07-9.43-1.36-12.14C2.46 6.82 4.34 5.7 6.1 5.7c1.78 0 2.91 1 4.39 1 1.43 0 2.31-1 4.38-1 1.57 0 3.23.86 4.4 2.34-3.86 2.12-3.23 7.64 1.23 9.61z"/>
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">iPhone & iPad (Safari)</h3>
+            </div>
+            <ol className="text-sm text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed list-decimal list-inside">
+              <li>Open <span className="font-medium text-slate-900 dark:text-white">sitejot.app</span> in Safari.</li>
+              <li>Tap the <span className="font-medium text-slate-900 dark:text-white">Share</span> button at the bottom of the screen.</li>
+              <li>Scroll down and tap <span className="font-medium text-slate-900 dark:text-white">Add to Home Screen</span>.</li>
+              <li>Tap <span className="font-medium text-slate-900 dark:text-white">Add</span> in the top-right corner.</li>
+            </ol>
+          </div>
+
+          {/* Android */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.523 15.34a1.13 1.13 0 1 1 0-2.26 1.13 1.13 0 0 1 0 2.26zm-11.04 0a1.13 1.13 0 1 1 0-2.26 1.13 1.13 0 0 1 0 2.26zm11.43-6.24l2.01-3.48a.42.42 0 0 0-.73-.42l-2.03 3.52a12.6 12.6 0 0 0-10.32 0L4.81 5.2a.42.42 0 0 0-.73.42L6.1 9.1A11.5 11.5 0 0 0 .5 18h23a11.5 11.5 0 0 0-5.59-8.9z"/>
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">Android (Chrome)</h3>
+            </div>
+            <ol className="text-sm text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed list-decimal list-inside">
+              <li>Open <span className="font-medium text-slate-900 dark:text-white">sitejot.app</span> in Chrome.</li>
+              <li>Tap the <span className="font-medium text-slate-900 dark:text-white">⋮ menu</span> in the top-right corner.</li>
+              <li>Tap <span className="font-medium text-slate-900 dark:text-white">Install app</span> (or <span className="font-medium text-slate-900 dark:text-white">Add to Home screen</span>).</li>
+              <li>Confirm by tapping <span className="font-medium text-slate-900 dark:text-white">Install</span>.</li>
+            </ol>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-6">
+          Already have a SiteJot account? Sign in on the installed app and your sites will be there.
+        </p>
+      </section>
 
       {/* CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">

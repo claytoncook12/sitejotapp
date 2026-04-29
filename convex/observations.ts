@@ -80,6 +80,7 @@ export const update = mutation({
     longitude: v.optional(v.number()),
     gpsAccuracy: v.optional(v.number()),
     clearGps: v.optional(v.boolean()),
+    fileId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -105,6 +106,19 @@ export const update = mutation({
       if (args.latitude !== undefined) patch.latitude = args.latitude;
       if (args.longitude !== undefined) patch.longitude = args.longitude;
       if (args.gpsAccuracy !== undefined) patch.gpsAccuracy = args.gpsAccuracy;
+    }
+
+    // Replace the stored file (e.g. after photo rotation). Delete the
+    // previous file so we don't leak storage.
+    if (args.fileId !== undefined && args.fileId !== observation.fileId) {
+      if (observation.fileId) {
+        try {
+          await ctx.storage.delete(observation.fileId);
+        } catch {
+          // Best-effort cleanup; don't block the update if delete fails.
+        }
+      }
+      patch.fileId = args.fileId;
     }
 
     return await ctx.db.patch(args.observationId, patch);

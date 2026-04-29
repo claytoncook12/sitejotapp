@@ -81,6 +81,53 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const [isRotating, setIsRotating] = useState(false);
+
+  const rotatePhoto90 = async () => {
+    if (!selectedFile || isRotating) return;
+    if (!selectedFile.type.startsWith("image/")) return;
+
+    setIsRotating(true);
+    try {
+      const bitmap = await createImageBitmap(selectedFile);
+      const canvas = document.createElement("canvas");
+      // Swap dimensions for a 90° rotation.
+      canvas.width = bitmap.height;
+      canvas.height = bitmap.width;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get canvas context");
+      // Rotate 90° clockwise around the new canvas center.
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+      bitmap.close?.();
+
+      // Preserve JPEG/PNG type when possible; fall back to JPEG.
+      const outType = selectedFile.type === "image/png" ? "image/png" : "image/jpeg";
+      const quality = outType === "image/jpeg" ? 0.92 : undefined;
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("Rotate failed"))),
+          outType,
+          quality,
+        );
+      });
+
+      const ext = outType === "image/png" ? "png" : "jpg";
+      const baseName = selectedFile.name.replace(/\.[^.]+$/, "") || "photo";
+      const rotated = new File([blob], `${baseName}.${ext}`, { type: outType });
+
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setSelectedFile(rotated);
+      setPreviewUrl(URL.createObjectURL(rotated));
+    } catch (err) {
+      console.error("Rotate photo error:", err);
+      toast.error("Could not rotate photo");
+    } finally {
+      setIsRotating(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -254,8 +301,8 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
                       />
                     </div>
                   )}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between">
-                    <div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="text-slate-900 dark:text-white text-sm font-medium truncate">
                         {selectedFile.name}
                       </p>
@@ -263,13 +310,29 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
                         {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={clearFile}
-                      className="text-red-500 hover:text-red-400 text-sm font-medium transition-colors"
-                    >
-                      Remove
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {formData.type === "photo" && (
+                        <button
+                          type="button"
+                          onClick={rotatePhoto90}
+                          disabled={isRotating}
+                          title="Rotate 90°"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          {isRotating ? "Rotating…" : "Rotate"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={clearFile}
+                        className="text-red-500 hover:text-red-400 text-sm font-medium transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (

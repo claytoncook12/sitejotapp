@@ -54,12 +54,14 @@ function VisitObservations({
   const updateObservation = useMutation(api.observations.update);
   const deleteObservation = useMutation(api.observations.remove);
   const reorderObservations = useMutation(api.observations.reorder);
+  const generateObservationUploadUrl = useMutation(api.observations.generateUploadUrl);
 
   const [editingId, setEditingId] = useState<Id<"observations"> | null>(null);
   const [editDescription, setEditDescription] = useState("");
   const [editLatitude, setEditLatitude] = useState("");
   const [editLongitude, setEditLongitude] = useState("");
   const [editAccuracy, setEditAccuracy] = useState("");
+  const [rotatingId, setRotatingId] = useState<Id<"observations"> | null>(null);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
     const [modalVideoUrl, setModalVideoUrl] = useState<string | null>(null);
   const [expandedMaps, setExpandedMaps] = useState<Set<string>>(new Set());
@@ -159,6 +161,70 @@ function VisitObservations({
       } catch (error) {
         toast.error("Failed to delete observation");
       }
+    }
+  };
+
+  const handleRotateObservationPhoto = async (
+    observationId: Id<"observations">,
+    mediaUrl: string,
+  ) => {
+    if (!isOnline) {
+      toast.error("Rotate requires an internet connection");
+      return;
+    }
+    if (rotatingId) return;
+    setRotatingId(observationId);
+    try {
+      // Fetch the current photo bytes from the storage URL.
+      const res = await fetch(mediaUrl);
+      if (!res.ok) throw new Error("Failed to fetch photo");
+      const sourceBlob = await res.blob();
+
+      // Decode and rotate 90° clockwise on a canvas.
+      const bitmap = await createImageBitmap(sourceBlob);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.height;
+      canvas.height = bitmap.width;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get canvas context");
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+      bitmap.close?.();
+
+      const outType = sourceBlob.type === "image/png" ? "image/png" : "image/jpeg";
+      const quality = outType === "image/jpeg" ? 0.92 : undefined;
+      const rotatedBlob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("Rotate failed"))),
+          outType,
+          quality,
+        );
+      });
+
+      // Upload the rotated image as a new file in Convex storage.
+      const uploadUrl = await generateObservationUploadUrl();
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": outType },
+        body: rotatedBlob,
+      });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+      const { storageId } = (await uploadRes.json()) as { storageId: Id<"_storage"> };
+
+      // Patch the observation to point at the new file. The mutation deletes
+      // the previous file from storage.
+      await updateObservation({
+        observationId,
+        fileId: storageId,
+      });
+
+      toast.success("Photo rotated");
+    } catch (err) {
+      console.error("Rotate observation photo error:", err);
+      toast.error("Could not rotate photo");
+    } finally {
+      setRotatingId(null);
     }
   };
 
@@ -359,6 +425,23 @@ function VisitObservations({
                                 className="absolute inset-0 w-full h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => setModalImageUrl(mediaUrl)}
                               />
+                              {editingId === observation._id && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleRotateObservationPhoto(observation._id, mediaUrl);
+                                  }}
+                                  disabled={rotatingId === observation._id || !isOnline}
+                                  title={isOnline ? "Rotate 90°" : "Rotate requires an internet connection"}
+                                  className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 disabled:bg-slate-800/50 disabled:cursor-not-allowed text-white rounded-full pl-2 pr-3 py-1.5 text-xs font-medium transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                  {rotatingId === observation._id ? "Rotating…" : "Rotate"}
+                                </button>
+                              )}
                             </div>
                           </div>
                         )}

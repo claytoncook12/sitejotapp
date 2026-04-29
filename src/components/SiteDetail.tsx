@@ -107,8 +107,12 @@ function VisitObservations({
   const draggedItemRef = useRef<ObservationType | null>(null);
   const canReorder = !isTempVisit && localObservations.every((o) => !isTempId(o._id as string));
 
-  // Sync local state with server data
-  const observationsKey = JSON.stringify(observations.map((o) => o._id));
+  // Sync local state with server data. Key includes fileId so that media
+  // replacements (e.g. photo rotation) also trigger a resync, not just
+  // additions/removals.
+  const observationsKey = JSON.stringify(
+    observations.map((o) => [o._id, o.fileId ?? null]),
+  );
   useEffect(() => {
     setLocalObservations(observations);
   }, [observationsKey]);

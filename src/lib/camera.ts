@@ -1,35 +1,29 @@
 export type CameraMode = "photo" | "video";
 
-const PHOTO_CONSTRAINTS: MediaStreamConstraints = {
-  video: {
-    facingMode: "environment",
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
-  },
-  audio: false,
-};
-
-const VIDEO_CONSTRAINTS: MediaStreamConstraints = {
-  video: {
-    facingMode: "environment",
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-  },
-  audio: true,
-};
-
 export async function openCamera(
   mode: CameraMode,
   facingMode: "environment" | "user" = "environment"
 ): Promise<MediaStream> {
-  const base = mode === "photo" ? PHOTO_CONSTRAINTS : VIDEO_CONSTRAINTS;
-  const constraints: MediaStreamConstraints = {
-    ...base,
-    video: {
-      ...(base.video as MediaTrackConstraints),
-      facingMode,
-    },
+  // Keep constraints minimal so the browser can pick the camera's native
+  // sensor mode. Over-constraining (forcing portrait aspect ratio + high
+  // resolution) makes getUserMedia negotiation slow and forces the browser
+  // to software-scale every frame, causing a choppy preview.
+  //
+  // We cap width to keep file sizes reasonable; height/aspect are left to
+  // the device. The full-screen preview uses `object-contain` so the user
+  // sees the entire captured frame regardless of orientation.
+  const widthMax = mode === "photo" ? 1920 : 1280;
+
+  const videoConstraints: MediaTrackConstraints = {
+    facingMode,
+    width: { ideal: widthMax, max: widthMax },
   };
+
+  const constraints: MediaStreamConstraints = {
+    video: videoConstraints,
+    audio: mode === "video",
+  };
+
   return navigator.mediaDevices.getUserMedia(constraints);
 }
 

@@ -26,12 +26,28 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
   const [gpsData, setGpsData] = useState<GpsData | null>(null);
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const [flipNotice, setFlipNotice] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<Mp4RecorderHandle | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gpsRef = useRef<GpsData | null>(null);
+
+  // Lock body scroll while the fullscreen camera overlay is open (phone-first PWA UX).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const previousOverscroll = body.style.overscrollBehavior;
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "contain";
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, []);
 
   // Acquire GPS position when camera opens
   useEffect(() => {
@@ -78,11 +94,21 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
       const stream = await openCamera(mode, facing);
       streamRef.current = stream;
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      const videoEl = videoRef.current;
+      if (videoEl) {
+        videoEl.srcObject = stream;
+        // Don't await play() — it can take hundreds of ms to resolve and
+        // would delay the UI transition out of "initializing". Fire and
+        // forget; autoplay rejection is non-fatal because the stream is
+        // already attached and the <video> element is muted + playsInline.
+        void videoEl.play().catch(() => {
+          /* ignore autoplay rejection */
+        });
       }
 
+      // Show the viewfinder immediately. The first frame paints as soon as
+      // the decoder is ready; the user sees progress instead of a 1–3s
+      // "Starting camera..." wait.
       setState("previewing");
     } catch (err) {
       console.error("Camera error:", err);
@@ -98,10 +124,57 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
     return cleanup;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Detect whether the device exposes more than one video input so we can
+  // hide the flip button on single-camera devices (e.g. most laptops/desktops).
+  // Deferred via setTimeout so it doesn't compete with the initial
+  // getUserMedia negotiation, which can serialize on some browsers.
+  useEffect(() => {
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      try {
+        if (!navigator.mediaDevices?.enumerateDevices) return;
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter((d) => d.kind === "videoinput");
+        if (!cancelled) setHasMultipleCameras(videoInputs.length > 1);
+      } catch {
+        // If enumeration fails, leave the flip button hidden.
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, []);
+
   const handleFlipCamera = async () => {
     const newFacing = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(newFacing);
-    await startStream(newFacing);
+    const previousStream = streamRef.current;
+
+    // Try to open the alternate camera *before* tearing down the working one.
+    // If the device only has one camera (or the flip is otherwise unavailable),
+    // catch the error and keep the current stream running.
+    try {
+      const newStream = await openCamera(mode, newFacing);
+
+      // Success — swap streams.
+      stopCamera(previousStream);
+      streamRef.current = newStream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
+        try {
+          await videoRef.current.play();
+        } catch {
+          // Autoplay rejection is non-fatal; the stream is still attached.
+        }
+      }
+      setFacingMode(newFacing);
+    } catch (err) {
+      console.warn("Flip camera failed:", err);
+      // Don't disturb the existing preview — surface a transient notice.
+      setHasMultipleCameras(false);
+      setFlipNotice("Only one camera is available on this device.");
+      setTimeout(() => setFlipNotice(null), 2500);
+    }
   };
 
   // --- Photo handlers ---
@@ -205,8 +278,8 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
   // --- Error state ---
   if (error) {
     return (
-      <div className="rounded-lg border-2 border-dashed border-red-300 dark:border-red-700 p-6 text-center">
-        <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
+      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 text-center">
+        <p className="text-red-400 mb-6 text-base max-w-sm">{error}</p>
         <div className="flex justify-center gap-3">
           <button
             type="button"
@@ -218,7 +291,7 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
           <button
             type="button"
             onClick={handleCancel}
-            className="px-4 py-2 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
           >
             Cancel
           </button>
@@ -228,9 +301,62 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
   }
 
   return (
-    <div className="rounded-lg overflow-hidden border border-slate-300 dark:border-slate-600 bg-black">
-      {/* Viewfinder / Review area */}
-      <div className="relative aspect-[4/3] bg-black">
+    <div
+      className="fixed inset-0 z-50 bg-black flex flex-col"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      {/* Top bar: cancel + recording indicator */}
+      <div className="relative flex items-center justify-between px-4 py-3 z-10">
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="px-3 py-2 text-white/80 hover:text-white text-sm font-medium transition-colors"
+        >
+          Cancel
+        </button>
+
+        {state === "recording" && (
+          <div className="flex items-center gap-2 bg-black/60 rounded-full px-3 py-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-white text-sm font-mono">
+              {formatTime(elapsedSeconds)} / {formatTime(MAX_DURATION_S)}
+            </span>
+          </div>
+        )}
+
+        {state === "previewing" && hasMultipleCameras ? (
+          <button
+            type="button"
+            onClick={handleFlipCamera}
+            className="p-2 text-white/80 hover:text-white transition-colors"
+            title="Flip camera"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
+        ) : (
+          <div className="w-10" />
+        )}
+      </div>
+
+      {/* Transient flip-camera notice (e.g., single-camera device) */}
+      {flipNotice && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-black/70 text-white text-sm px-3 py-1.5 rounded-full">
+          {flipNotice}
+        </div>
+      )}
+
+      {/* Viewfinder / Review area — fills available space, object-contain so what you see is what you save */}
+      <div className="relative flex-1 min-h-0 bg-black">
         {state === "initializing" && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-white text-sm">Starting camera...</div>
@@ -243,27 +369,17 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
           autoPlay
           playsInline
           muted
-          className={`w-full h-full object-cover ${
+          className={`absolute inset-0 w-full h-full object-contain ${
             state === "review" ? "hidden" : ""
           }`}
         />
-
-        {/* Recording indicator */}
-        {state === "recording" && (
-          <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/60 rounded-full px-3 py-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-white text-sm font-mono">
-              {formatTime(elapsedSeconds)} / {formatTime(MAX_DURATION_S)}
-            </span>
-          </div>
-        )}
 
         {/* Photo review */}
         {state === "review" && mode === "photo" && capturedUrl && (
           <img
             src={capturedUrl}
             alt="Captured"
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-contain"
           />
         )}
 
@@ -273,73 +389,49 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
             src={capturedUrl}
             controls
             playsInline
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-contain"
           />
         )}
       </div>
 
-      {/* Controls bar */}
-      <div className="bg-slate-900 px-4 py-3">
+      {/* Bottom controls bar */}
+      <div className="px-4 py-4 bg-black/70 backdrop-blur-sm">
         {/* Previewing: show capture controls */}
         {state === "previewing" && (
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-3 py-2 text-slate-400 hover:text-white text-sm transition-colors"
-            >
-              Cancel
-            </button>
-
+          <div className="flex items-center justify-center">
             {mode === "photo" ? (
               <button
                 type="button"
                 onClick={handleCapturePhoto}
-                className="w-14 h-14 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 transition-colors"
+                className="w-20 h-20 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 active:scale-95 transition-all"
                 title="Take photo"
               />
             ) : (
               <button
                 type="button"
                 onClick={handleStartRecording}
-                className="w-14 h-14 rounded-full border-4 border-white bg-red-500 hover:bg-red-600 transition-colors"
+                className="w-20 h-20 rounded-full border-4 border-white bg-red-500 hover:bg-red-600 active:scale-95 transition-all"
                 title="Start recording"
               />
             )}
-
-            <button
-              type="button"
-              onClick={handleFlipCamera}
-              className="p-2 text-slate-400 hover:text-white transition-colors"
-              title="Flip camera"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
           </div>
         )}
 
         {/* Recording: show stop control */}
         {state === "recording" && (
           <div className="flex items-center justify-between">
-            <div className="text-slate-400 text-sm w-16" />
+            <div className="text-white/60 text-sm w-16" />
 
             <button
               type="button"
               onClick={handleStopRecording}
-              className="w-14 h-14 rounded-full border-4 border-white flex items-center justify-center bg-transparent hover:bg-white/10 transition-colors"
+              className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-transparent hover:bg-white/10 active:scale-95 transition-all"
               title="Stop recording"
             >
-              <div className="w-6 h-6 rounded-sm bg-red-500" />
+              <div className="w-8 h-8 rounded-sm bg-red-500" />
             </button>
 
-            <div className="text-slate-400 text-sm w-16 text-right">
+            <div className="text-white/80 text-sm w-16 text-right font-mono">
               {formatTime(MAX_DURATION_S - elapsedSeconds)}
             </div>
           </div>
@@ -347,7 +439,7 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
 
         {/* Review: show retake / use controls */}
         {state === "review" && (
-          <div className="space-y-2">
+          <div className="space-y-2 max-w-md mx-auto">
             <button
               type="button"
               onClick={handleUse}
@@ -363,7 +455,7 @@ export function CameraCapture({ mode, onCapture, onCancel }: CameraCaptureProps)
             <button
               type="button"
               onClick={handleRetake}
-              className="w-full py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
+              className="w-full py-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
             >
               Retake
             </button>

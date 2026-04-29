@@ -351,34 +351,38 @@ function VisitObservations({
                     return (
                       <>
                         {observation.type === "photo" && mediaUrl && (
-                          <div className="flex-shrink-0">
-                            <img
-                              src={mediaUrl}
-                              alt="Observation thumbnail"
-                              className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => setModalImageUrl(mediaUrl)}
-                            />
+                          <div className="flex-shrink-0 w-full sm:w-72 md:w-80 lg:w-96">
+                            <div className="relative w-full aspect-video bg-black rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
+                              <img
+                                src={mediaUrl}
+                                alt="Observation thumbnail"
+                                className="absolute inset-0 w-full h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => setModalImageUrl(mediaUrl)}
+                              />
+                            </div>
                           </div>
                         )}
 
                         {observation.type === "video" && mediaUrl && (
-                          <div className="flex-shrink-0 relative">
-                            <video
-                              src={mediaUrl}
-                              controls
-                              controlsList="nofullscreen"
-                              className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600"
-                              preload="metadata"
-                            />
-                            <button
-                              onClick={() => setModalVideoUrl(mediaUrl)}
-                              className="absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full p-2 transition-colors z-10"
-                              title="View fullscreen"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7V2H2v9h2V4zm16 0h-7V2h9v9h-2V4zm0 16h-7v2h9v-9h-2v7zm-16 0h7v2H2v-9h2v7z" />
-                              </svg>
-                            </button>
+                          <div className="flex-shrink-0 w-full sm:w-72 md:w-80 lg:w-96">
+                            <div className="relative w-full aspect-video bg-black rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
+                              <video
+                                src={mediaUrl}
+                                controls
+                                controlsList="nofullscreen"
+                                className="absolute inset-0 w-full h-full object-contain"
+                                preload="metadata"
+                              />
+                              <button
+                                onClick={() => setModalVideoUrl(mediaUrl)}
+                                className="absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full p-2 transition-colors z-10"
+                                title="View fullscreen"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7V2H2v9h2V4zm16 0h-7V2h9v9h-2V4zm0 16h-7v2h9v-9h-2v7zm-16 0h7v2H2v-9h2v7z" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                         )}
                       </>
@@ -632,26 +636,25 @@ function VisitObservations({
         {/* Video Modal */}
         {modalVideoUrl && (
           <div
-            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black"
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black p-4"
             onClick={() => setModalVideoUrl(null)}
           >
-            <div className="relative w-full h-full" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => setModalVideoUrl(null)}
-                className="absolute top-4 right-4 z-10 p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              <video
-                src={modalVideoUrl}
-                controls
-                autoPlay
-                className="max-w-[95vw] max-h-[95vh] bg-black rounded-lg"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            </div>
+            <button
+              onClick={() => setModalVideoUrl(null)}
+              className="absolute top-4 right-4 z-20 p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <video
+              src={modalVideoUrl}
+              controls
+              autoPlay
+              playsInline
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-full max-h-full w-auto h-auto object-contain"
+            />
           </div>
         )}
     </div>

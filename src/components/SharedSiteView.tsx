@@ -858,26 +858,25 @@ function SharedVisitObservations({
       {/* Video Modal */}
       {modalVideoUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black p-4"
           onClick={() => setModalVideoUrl(null)}
         >
-          <div className="relative w-full h-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setModalVideoUrl(null)}
-              className="absolute top-4 right-4 z-10 p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <video
-              src={modalVideoUrl}
-              controls
-              autoPlay
-              className="max-w-[95vw] max-h-[95vh] bg-black rounded-lg"
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          </div>
+          <button
+            onClick={() => setModalVideoUrl(null)}
+            className="absolute top-4 right-4 z-20 p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <video
+            src={modalVideoUrl}
+            controls
+            autoPlay
+            playsInline
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full w-auto h-auto object-contain"
+          />
         </div>
       )}
     </div>

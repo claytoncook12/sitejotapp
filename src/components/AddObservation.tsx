@@ -237,18 +237,22 @@ export function AddObservation({ siteId, visitId, onNavigate }: AddObservationPr
               ) : selectedFile && previewUrl ? (
                 <div className="border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
                   {formData.type === "photo" ? (
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="w-full max-h-64 object-contain bg-black"
-                    />
+                    <div className="relative w-full aspect-video bg-black">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    </div>
                   ) : (
-                    <video
-                      src={previewUrl}
-                      controls
-                      playsInline
-                      className="w-full max-h-64 bg-black"
-                    />
+                    <div className="relative w-full aspect-video bg-black">
+                      <video
+                        src={previewUrl}
+                        controls
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                    </div>
                   )}
                   <div className="p-3 bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between">
                     <div>

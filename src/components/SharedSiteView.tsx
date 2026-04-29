@@ -125,7 +125,7 @@ function SharedReportVisitObservations({ visitId, visitDate, visitIndex, slug }:
   });
 
   return (
-    <div className="mb-8 print:mb-6">
+    <div className={`mb-8 print:mb-6 ${visitIndex > 0 ? "print:break-before-page" : ""}`}>
       <h3 className="text-lg font-semibold text-black mb-4 print:text-base border-b-2 border-amber-400 pb-2">
         Visit {visitIndex + 1}: {formattedDate}
       </h3>
@@ -135,7 +135,14 @@ function SharedReportVisitObservations({ visitId, visitDate, visitIndex, slug }:
       ) : (
         <div className="space-y-6 print:space-y-4">
           {observations.map((observation, index) => (
-            <div key={observation._id} className="border border-gray-300 rounded-lg p-4 print:break-inside-avoid">
+            <div
+              key={observation._id}
+              className={`border border-gray-300 rounded-lg p-4 print:break-inside-avoid ${
+                // Force two observations per printed page: break after every
+                // 2nd item (1-indexed -> odd index in 0-based loop).
+                index % 2 === 1 ? "print:[break-after:page]" : ""
+              }`}
+            >
               <div className="flex justify-between items-start mb-3 print:mb-2">
                 <div className="flex items-center gap-2">
                   <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-sm font-medium capitalize print:bg-gray-100 print:text-gray-800">
@@ -157,11 +164,11 @@ function SharedReportVisitObservations({ visitId, visitDate, visitIndex, slug }:
                 <div className="mt-4">
                   <h4 className="font-medium text-black mb-2">Attachment</h4>
                   {observation.type === "photo" && (
-                    <div className="print:max-w-md">
+                    <div className="flex justify-center print:max-w-none">
                       <img
                         src={observation.fileUrl}
                         alt={`Observation ${index + 1}`}
-                        className="max-w-full max-h-[768px] w-auto h-auto rounded border border-gray-300 print:max-h-64"
+                        className="max-w-full max-h-[768px] w-auto h-auto rounded border border-gray-300 mx-auto print:max-h-[4.25in] print:max-w-full print:w-auto print:h-auto"
                       />
                     </div>
                   )}
@@ -322,7 +329,12 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
           [data-sonner-toaster] { display: none !important; }
-          .bg-slate-800 { background: white !important; border: 1px solid #ccc !important; }
+          /* Remove any shadows from screen-mode utilities so they don't print as gray frames */
+          * { box-shadow: none !important; filter: none !important; }
+          .bg-slate-50, .bg-slate-100, .bg-slate-200, .bg-slate-700, .bg-slate-800, .bg-slate-900,
+          .dark\:bg-slate-700, .dark\:bg-slate-800, .dark\:bg-slate-900,
+          .bg-gray-50, .bg-gray-100 { background: white !important; }
+          .bg-slate-800 { border: 1px solid #ccc !important; }
           .text-white { color: black !important; }
           .text-slate-300 { color: #333 !important; }
           .text-slate-400 { color: #666 !important; }
@@ -413,7 +425,7 @@ function SharedSiteReport({ slug, onBack }: { slug: string; onBack: () => void }
           </div>
         )}
 
-        <div className="mb-8 print:mb-0">
+        <div className="mb-8 print:mb-0 print:break-before-page">
           <h2 className="text-xl font-semibold text-black mb-4 print:text-lg">
             Visits & Observations
           </h2>
@@ -644,11 +656,11 @@ function SharedPlanViewer({
                 {selectedMarker.observation ? (
                   <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
                     {selectedMarker.observation.imageUrl && (
-                      <div className="w-full aspect-video bg-slate-200 dark:bg-slate-600">
+                      <div className="w-full aspect-video bg-black">
                         <img
                           src={selectedMarker.observation.imageUrl}
                           alt="Observation"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     )}
@@ -755,29 +767,33 @@ function SharedVisitObservations({
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   {observation.type === "photo" && observation.fileUrl && (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={observation.fileUrl}
-                        alt="Observation thumbnail"
-                        className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => {
-                          if (observation.fileUrl) {
-                            setModalImageUrl(observation.fileUrl);
-                          }
-                        }}
-                      />
+                    <div className="flex-shrink-0 w-full sm:w-72 md:w-80 lg:w-96">
+                      <div className="aspect-video bg-black rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
+                        <img
+                          src={observation.fileUrl}
+                          alt="Observation thumbnail"
+                          className="w-full h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => {
+                            if (observation.fileUrl) {
+                              setModalImageUrl(observation.fileUrl);
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
 
                   {observation.type === "video" && observation.fileUrl && (
-                    <div className="flex-shrink-0 relative">
-                      <video
-                        src={observation.fileUrl}
-                        controls
-                        controlsList="nofullscreen"
-                        className="w-full sm:w-56 h-48 sm:h-56 object-cover rounded-lg border border-slate-300 dark:border-slate-600"
-                        preload="metadata"
-                      />
+                    <div className="flex-shrink-0 relative w-full sm:w-72 md:w-80 lg:w-96">
+                      <div className="aspect-video bg-black rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
+                        <video
+                          src={observation.fileUrl}
+                          controls
+                          controlsList="nofullscreen"
+                          className="w-full h-full object-contain"
+                          preload="metadata"
+                        />
+                      </div>
                       <button
                         onClick={() => setModalVideoUrl(observation.fileUrl)}
                         className="absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-full p-2 transition-colors z-10"
